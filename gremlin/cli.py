@@ -1,9 +1,13 @@
 """Gremlin CLI - Exploratory QA Agent."""
 
+from pathlib import Path
+
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from gremlin import __version__
+from gremlin.core.patterns import load_patterns, get_domain_keywords
 
 app = typer.Typer(
     name="gremlin",
@@ -11,6 +15,9 @@ app = typer.Typer(
     add_completion=False,
 )
 console = Console()
+
+# Path to patterns file
+PATTERNS_PATH = Path(__file__).parent.parent / "patterns" / "breaking.yaml"
 
 
 def version_callback(value: bool) -> None:
@@ -70,15 +77,95 @@ def patterns(
         gremlin patterns show payments
         gremlin patterns show auth
     """
-    # TODO: Implement in Phase 2
+    try:
+        all_patterns = load_patterns(PATTERNS_PATH)
+    except FileNotFoundError:
+        console.print("[red]Error: patterns/breaking.yaml not found[/red]")
+        raise typer.Exit(1)
+
     if action == "list":
-        console.print("[bold]Available Pattern Categories[/bold]\n")
-        console.print("[yellow]Implementation coming in Phase 2...[/yellow]")
+        _list_patterns(all_patterns)
     elif action == "show" and domain:
-        console.print(f"[bold]Patterns for domain: {domain}[/bold]\n")
-        console.print("[yellow]Implementation coming in Phase 2...[/yellow]")
+        _show_domain_patterns(all_patterns, domain)
     else:
         console.print("[red]Usage: gremlin patterns list OR gremlin patterns show <domain>[/red]")
+        raise typer.Exit(1)
+
+
+def _list_patterns(all_patterns: dict) -> None:
+    """List all available pattern categories."""
+    # Universal categories
+    console.print("\n[bold cyan]Universal Patterns[/bold cyan]")
+    console.print("[dim]Applied to every analysis[/dim]\n")
+
+    universal = all_patterns.get("universal", [])
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Category", style="cyan")
+    table.add_column("Patterns", justify="right")
+
+    for item in universal:
+        category = item.get("category", "Unknown")
+        patterns_list = item.get("patterns", [])
+        table.add_row(category, str(len(patterns_list)))
+
+    console.print(table)
+
+    # Domain-specific
+    console.print("\n[bold green]Domain-Specific Patterns[/bold green]")
+    console.print("[dim]Applied when domain is detected in scope[/dim]\n")
+
+    domain_keywords = get_domain_keywords(all_patterns)
+    domain_specific = all_patterns.get("domain_specific", {})
+
+    table = Table(show_header=True, header_style="bold")
+    table.add_column("Domain", style="green")
+    table.add_column("Patterns", justify="right")
+    table.add_column("Keywords", style="dim")
+
+    for domain, config in domain_specific.items():
+        pattern_count = len(config.get("patterns", []))
+        keywords = ", ".join(domain_keywords.get(domain, [])[:4])
+        if len(domain_keywords.get(domain, [])) > 4:
+            keywords += "..."
+        table.add_row(domain, str(pattern_count), keywords)
+
+    console.print(table)
+    console.print(f"\n[dim]Use 'gremlin patterns show <domain>' for details[/dim]")
+
+
+def _show_domain_patterns(all_patterns: dict, domain: str) -> None:
+    """Show patterns for a specific domain."""
+    domain_specific = all_patterns.get("domain_specific", {})
+    universal = all_patterns.get("universal", [])
+
+    # Check if it's a universal category (case-insensitive match)
+    for item in universal:
+        category = item.get("category", "")
+        # Match by category name (case-insensitive, handle spaces/underscores)
+        normalized = category.lower().replace(" ", "_").replace("&", "and")
+        if domain.lower() == normalized or domain.lower() == category.lower():
+            console.print(f"\n[bold cyan]Universal: {category}[/bold cyan]\n")
+            for i, pattern in enumerate(item.get("patterns", []), 1):
+                console.print(f"  {i}. {pattern}")
+            return
+
+    # Check domain-specific
+    if domain not in domain_specific:
+        universal_categories = [item.get("category", "").lower().replace(" ", "_") for item in universal]
+        available = list(domain_specific.keys()) + universal_categories
+        console.print(f"[red]Unknown domain: {domain}[/red]")
+        console.print(f"[dim]Available: {', '.join(available)}[/dim]")
+        raise typer.Exit(1)
+
+    config = domain_specific[domain]
+    keywords = config.get("keywords", [])
+    patterns_list = config.get("patterns", [])
+
+    console.print(f"\n[bold green]{domain.upper()}[/bold green]")
+    console.print(f"[dim]Keywords: {', '.join(keywords)}[/dim]\n")
+
+    for i, pattern in enumerate(patterns_list, 1):
+        console.print(f"  {i}. {pattern}")
 
 
 if __name__ == "__main__":
