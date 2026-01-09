@@ -2,14 +2,11 @@
 
 from pathlib import Path
 
-import pytest
-
 from gremlin.core.patterns import (
     get_domain_keywords,
     load_patterns,
     select_patterns,
 )
-
 
 # Path to actual patterns file
 PATTERNS_PATH = Path(__file__).parent.parent / "patterns" / "breaking.yaml"

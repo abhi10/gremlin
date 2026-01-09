@@ -49,7 +49,8 @@ def build_prompt(
     user_msg = f"""Analyze this scope for risks: **{scope}**
 
 Depth: {depth}
-Confidence threshold: Only include scenarios where you're >{threshold}% confident this could actually happen.
+Confidence threshold: Only include scenarios where you're >{threshold}% confident
+this could actually happen.
 
 Apply the breaking patterns above. For each risk scenario:
 1. State the "what if?" question

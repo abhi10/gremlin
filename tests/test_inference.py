@@ -1,9 +1,7 @@
 """Tests for domain inference."""
 
-import pytest
 
 from gremlin.core.inference import infer_domains
-
 
 # Sample domain keywords for testing
 DOMAIN_KEYWORDS = {
@@ -42,8 +40,13 @@ class TestInferDomains:
 
     def test_inference_case_insensitive(self):
         """Test that inference is case-insensitive."""
-        assert infer_domains("LOGIN", DOMAIN_KEYWORDS) == infer_domains("login", DOMAIN_KEYWORDS)
-        assert infer_domains("CHECKOUT", DOMAIN_KEYWORDS) == infer_domains("checkout", DOMAIN_KEYWORDS)
+        login_upper = infer_domains("LOGIN", DOMAIN_KEYWORDS)
+        login_lower = infer_domains("login", DOMAIN_KEYWORDS)
+        assert login_upper == login_lower
+
+        checkout_upper = infer_domains("CHECKOUT", DOMAIN_KEYWORDS)
+        checkout_lower = infer_domains("checkout", DOMAIN_KEYWORDS)
+        assert checkout_upper == checkout_lower
 
     def test_partial_keyword_match(self):
         """Test that partial matches work (keyword in larger word)."""
