@@ -1,5 +1,6 @@
 """Gremlin CLI - Exploratory QA Agent."""
 
+import sys
 from pathlib import Path
 
 import typer
@@ -23,6 +24,35 @@ console = Console()
 # Paths to data files
 PATTERNS_PATH = Path(__file__).parent.parent / "patterns" / "breaking.yaml"
 PROMPTS_PATH = Path(__file__).parent.parent / "prompts" / "system.md"
+
+
+def resolve_context(context: str | None) -> str | None:
+    """Resolve context from string, file reference, or stdin.
+
+    Args:
+        context: Context string, @filepath, or - for stdin
+
+    Returns:
+        Resolved context string or None
+    """
+    if context is None:
+        return None
+
+    # Stdin mode
+    if context == "-":
+        if sys.stdin.isatty():
+            return None  # No piped input
+        return sys.stdin.read().strip() or None
+
+    # File reference mode
+    if context.startswith("@"):
+        filepath = Path(context[1:])
+        if not filepath.exists():
+            raise FileNotFoundError(f"Context file not found: {filepath}")
+        return filepath.read_text().strip() or None
+
+    # Direct string mode
+    return context.strip() or None
 
 
 def version_callback(value: bool) -> None:
@@ -53,6 +83,12 @@ def main(
 @app.command()
 def review(
     scope: str = typer.Argument(..., help="Feature or area to analyze"),
+    context: str = typer.Option(
+        None,
+        "--context",
+        "-c",
+        help="Additional context: string, @filepath, or - for stdin",
+    ),
     depth: str = typer.Option(
         "quick", "--depth", "-d", help="Analysis depth: quick or deep"
     ),
@@ -68,8 +104,17 @@ def review(
     Examples:
         gremlin review "checkout flow"
         gremlin review "auth system" --depth deep
-        gremlin review "file upload" --threshold 60 --output md
+        gremlin review "checkout" --context "Using Stripe, Next.js"
+        gremlin review "auth" --context @src/auth/login.ts
+        git diff | gremlin review "changes" --context -
     """
+    # Resolve context input
+    try:
+        resolved_context = resolve_context(context)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
     # Load patterns and system prompt
     try:
         all_patterns = load_patterns(PATTERNS_PATH)
@@ -87,7 +132,7 @@ def review(
 
     # Build prompts
     full_system, user_message = build_prompt(
-        system_prompt, selected_patterns, scope, depth, threshold
+        system_prompt, selected_patterns, scope, depth, threshold, resolved_context
     )
 
     # Show what we're analyzing
@@ -96,6 +141,14 @@ def review(
         console.print(f"[bold cyan]🔍 Analyzing:[/bold cyan] {scope}")
         if matched_domains:
             console.print(f"[dim]Detected domains: {', '.join(matched_domains)}[/dim]")
+        if resolved_context:
+            # Show truncated context preview
+            if len(resolved_context) > 80:
+                preview = resolved_context[:80] + "..."
+            else:
+                preview = resolved_context
+            preview = preview.replace("\n", " ")
+            console.print(f"[dim]Context: {preview}[/dim]")
         console.print()
 
     # Call Claude
