@@ -7,7 +7,11 @@ from rich.console import Console
 from rich.table import Table
 
 from gremlin import __version__
-from gremlin.core.patterns import get_domain_keywords, load_patterns
+from gremlin.core.inference import infer_domains
+from gremlin.core.patterns import get_domain_keywords, load_patterns, select_patterns
+from gremlin.core.prompts import build_prompt, load_system_prompt
+from gremlin.llm.claude import call_claude, get_client
+from gremlin.output.renderer import render_json, render_markdown, render_rich
 
 app = typer.Typer(
     name="gremlin",
@@ -16,8 +20,9 @@ app = typer.Typer(
 )
 console = Console()
 
-# Path to patterns file
+# Paths to data files
 PATTERNS_PATH = Path(__file__).parent.parent / "patterns" / "breaking.yaml"
+PROMPTS_PATH = Path(__file__).parent.parent / "prompts" / "system.md"
 
 
 def version_callback(value: bool) -> None:
@@ -48,9 +53,15 @@ def main(
 @app.command()
 def review(
     scope: str = typer.Argument(..., help="Feature or area to analyze"),
-    depth: str = typer.Option("quick", "--depth", "-d", help="Analysis depth: quick or deep"),
-    threshold: int = typer.Option(80, "--threshold", "-t", help="Confidence threshold (0-100)"),
-    output: str = typer.Option("rich", "--output", "-o", help="Output format: rich, md, json"),
+    depth: str = typer.Option(
+        "quick", "--depth", "-d", help="Analysis depth: quick or deep"
+    ),
+    threshold: int = typer.Option(
+        80, "--threshold", "-t", help="Confidence threshold (0-100)"
+    ),
+    output: str = typer.Option(
+        "rich", "--output", "-o", help="Output format: rich, md, json"
+    ),
 ) -> None:
     """Analyze a feature/scope for QA risks.
 
@@ -59,10 +70,58 @@ def review(
         gremlin review "auth system" --depth deep
         gremlin review "file upload" --threshold 60 --output md
     """
-    # TODO: Implement in Phase 3
-    console.print(f"[bold]Reviewing:[/bold] {scope}")
-    console.print(f"[dim]Depth: {depth}, Threshold: {threshold}%, Output: {output}[/dim]")
-    console.print("\n[yellow]Implementation coming in Phase 3...[/yellow]")
+    # Load patterns and system prompt
+    try:
+        all_patterns = load_patterns(PATTERNS_PATH)
+        system_prompt = load_system_prompt(PROMPTS_PATH)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: Required file not found: {e.filename}[/red]")
+        raise typer.Exit(1)
+
+    # Infer domains from scope
+    domain_keywords = get_domain_keywords(all_patterns)
+    matched_domains = infer_domains(scope, domain_keywords)
+
+    # Select relevant patterns
+    selected_patterns = select_patterns(scope, all_patterns, matched_domains)
+
+    # Build prompts
+    full_system, user_message = build_prompt(
+        system_prompt, selected_patterns, scope, depth, threshold
+    )
+
+    # Show what we're analyzing
+    if output == "rich":
+        console.print()
+        console.print(f"[bold cyan]🔍 Analyzing:[/bold cyan] {scope}")
+        if matched_domains:
+            console.print(f"[dim]Detected domains: {', '.join(matched_domains)}[/dim]")
+        console.print()
+
+    # Call Claude
+    try:
+        client = get_client()
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    with console.status("[bold green]Thinking...[/bold green]", spinner="dots"):
+        try:
+            response = call_claude(client, full_system, user_message)
+        except Exception as e:
+            console.print(f"[red]Error calling Claude API: {e}[/red]")
+            raise typer.Exit(1)
+
+    # Render output
+    if output == "rich":
+        render_rich(response, scope, console)
+    elif output == "md":
+        render_markdown(response)
+    elif output == "json":
+        render_json(response)
+    else:
+        console.print(f"[red]Unknown output format: {output}[/red]")
+        raise typer.Exit(1)
 
 
 @app.command()
