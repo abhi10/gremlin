@@ -46,3 +46,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Internal docs and sessions (not for public)
+docs/
+sessions/
