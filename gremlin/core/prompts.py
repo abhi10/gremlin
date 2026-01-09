@@ -24,6 +24,7 @@ def build_prompt(
     scope: str,
     depth: str,
     threshold: int,
+    context: str | None = None,
 ) -> tuple[str, str]:
     """Build full system and user prompts for Claude.
 
@@ -33,6 +34,7 @@ def build_prompt(
         scope: User-provided scope
         depth: Analysis depth (quick/deep)
         threshold: Confidence threshold
+        context: Optional additional context (code, tech stack, etc.)
 
     Returns:
         Tuple of (full_system_prompt, user_message)
@@ -46,12 +48,25 @@ def build_prompt(
 {patterns_yaml}
 """
 
+    # Build context section if provided
+    context_section = ""
+    if context:
+        context_section = f"""
+## Additional Context
+
+```
+{context}
+```
+
+Use this context to make your analysis more specific and relevant.
+"""
+
     user_msg = f"""Analyze this scope for risks: **{scope}**
 
 Depth: {depth}
 Confidence threshold: Only include scenarios where you're >{threshold}% confident
 this could actually happen.
-
+{context_section}
 Apply the breaking patterns above. For each risk scenario:
 1. State the "what if?" question
 2. Explain the potential impact
