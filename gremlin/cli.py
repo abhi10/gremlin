@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.table import Table
 
 from gremlin import __version__
-from gremlin.core.patterns import load_patterns, get_domain_keywords
+from gremlin.core.patterns import get_domain_keywords, load_patterns
 
 app = typer.Typer(
     name="gremlin",
@@ -130,7 +130,7 @@ def _list_patterns(all_patterns: dict) -> None:
         table.add_row(domain, str(pattern_count), keywords)
 
     console.print(table)
-    console.print(f"\n[dim]Use 'gremlin patterns show <domain>' for details[/dim]")
+    console.print("\n[dim]Use 'gremlin patterns show <domain>' for details[/dim]")
 
 
 def _show_domain_patterns(all_patterns: dict, domain: str) -> None:
@@ -151,7 +151,9 @@ def _show_domain_patterns(all_patterns: dict, domain: str) -> None:
 
     # Check domain-specific
     if domain not in domain_specific:
-        universal_categories = [item.get("category", "").lower().replace(" ", "_") for item in universal]
+        universal_categories = [
+            item.get("category", "").lower().replace(" ", "_") for item in universal
+        ]
         available = list(domain_specific.keys()) + universal_categories
         console.print(f"[red]Unknown domain: {domain}[/red]")
         console.print(f"[dim]Available: {', '.join(available)}[/dim]")
