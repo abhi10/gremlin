@@ -4,12 +4,17 @@ import sys
 from pathlib import Path
 
 import typer
+import yaml
 from rich.console import Console
 from rich.table import Table
 
 from gremlin import __version__
 from gremlin.core.inference import infer_domains
-from gremlin.core.patterns import get_domain_keywords, load_patterns, select_patterns
+from gremlin.core.patterns import (
+    get_domain_keywords,
+    load_all_patterns,
+    select_patterns,
+)
 from gremlin.core.prompts import build_prompt, load_system_prompt
 from gremlin.llm.claude import call_claude, get_client
 from gremlin.output.renderer import render_json, render_markdown, render_rich
@@ -22,8 +27,10 @@ app = typer.Typer(
 console = Console()
 
 # Paths to data files
-PATTERNS_PATH = Path(__file__).parent.parent / "patterns" / "breaking.yaml"
+PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
+PATTERNS_PATH = PATTERNS_DIR / "breaking.yaml"
 PROMPTS_PATH = Path(__file__).parent.parent / "prompts" / "system.md"
+INCIDENTS_DIR = PATTERNS_DIR / "incidents"
 
 
 def resolve_context(context: str | None) -> str | None:
@@ -115,9 +122,9 @@ def review(
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 
-    # Load patterns and system prompt
+    # Load patterns and system prompt (includes incident patterns)
     try:
-        all_patterns = load_patterns(PATTERNS_PATH)
+        all_patterns = load_all_patterns(PATTERNS_DIR)
         system_prompt = load_system_prompt(PROMPTS_PATH)
     except FileNotFoundError as e:
         console.print(f"[red]Error: Required file not found: {e.filename}[/red]")
@@ -190,7 +197,7 @@ def patterns(
         gremlin patterns show auth
     """
     try:
-        all_patterns = load_patterns(PATTERNS_PATH)
+        all_patterns = load_all_patterns(PATTERNS_DIR)
     except FileNotFoundError:
         console.print("[red]Error: patterns/breaking.yaml not found[/red]")
         raise typer.Exit(1)
@@ -280,6 +287,101 @@ def _show_domain_patterns(all_patterns: dict, domain: str) -> None:
 
     for i, pattern in enumerate(patterns_list, 1):
         console.print(f"  {i}. {pattern}")
+
+
+@app.command()
+def learn(
+    description: str = typer.Argument(..., help="Description of the incident/pattern"),
+    domain: str = typer.Option(
+        None, "--domain", "-d", help="Domain for this pattern (e.g., auth, files, payments)"
+    ),
+    source: str = typer.Option(
+        None, "--source", "-s", help="Source project or incident ID"
+    ),
+) -> None:
+    """Learn a new pattern from an incident description.
+
+    Examples:
+        gremlin learn "Nav bar showed Login after successful auth" --domain auth --source chitram
+        gremlin learn "Landscape image rotated to portrait" --domain files --source chitram
+    """
+    import re
+
+    # Convert description to "What if" pattern
+    desc_lower = description.lower()
+    if desc_lower.startswith("what if"):
+        pattern = description
+    else:
+        # Convert statement to question form
+        pattern = f"What if {description[0].lower()}{description[1:]}?"
+        # Clean up double punctuation
+        pattern = re.sub(r"\?\?+", "?", pattern)
+        pattern = re.sub(r"\.\?", "?", pattern)
+
+    # Determine target file
+    source_name = source or "custom"
+    target_file = INCIDENTS_DIR / f"{source_name}.yaml"
+
+    # Ensure incidents directory exists
+    INCIDENTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Load existing patterns or create new structure
+    if target_file.exists():
+        with open(target_file) as f:
+            data = yaml.safe_load(f) or {}
+    else:
+        data = {
+            "# Patterns learned from incidents": None,
+            "universal": [],
+            "domain_specific": {},
+        }
+        # Remove the comment key (YAML quirk)
+        data.pop("# Patterns learned from incidents", None)
+        data = {"universal": [], "domain_specific": {}}
+
+    # Add pattern to appropriate section
+    if domain:
+        if "domain_specific" not in data:
+            data["domain_specific"] = {}
+        if domain not in data["domain_specific"]:
+            data["domain_specific"][domain] = {
+                "keywords": [domain],
+                "patterns": [],
+            }
+        patterns_list = data["domain_specific"][domain].get("patterns", [])
+        if pattern not in patterns_list:
+            patterns_list.append(pattern)
+            data["domain_specific"][domain]["patterns"] = patterns_list
+    else:
+        # Add to universal patterns under "Incidents" category
+        if "universal" not in data:
+            data["universal"] = []
+
+        incidents_cat = None
+        for cat in data["universal"]:
+            if cat.get("category") == "Incidents":
+                incidents_cat = cat
+                break
+
+        if incidents_cat is None:
+            incidents_cat = {"category": "Incidents", "patterns": []}
+            data["universal"].append(incidents_cat)
+
+        if pattern not in incidents_cat["patterns"]:
+            incidents_cat["patterns"].append(pattern)
+
+    # Write back to file
+    with open(target_file, "w") as f:
+        # Add header comment
+        f.write(f"# Patterns learned from {source_name} incidents\n")
+        f.write("# Auto-generated by 'gremlin learn'\n\n")
+        yaml.dump(data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    rel_path = target_file.relative_to(PATTERNS_DIR.parent)
+    console.print(f"[green]✓[/green] Added pattern to {rel_path}")
+    console.print(f"  [dim]{pattern}[/dim]")
+    if domain:
+        console.print(f"  [dim]Domain: {domain}[/dim]")
 
 
 if __name__ == "__main__":
