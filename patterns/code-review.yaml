@@ -1,0 +1,125 @@
+# Code-Review Patterns for Gremlin Agent
+# Optimized for code inspection in Claude Code sessions
+# Source: Extracted from breaking.yaml + agent-specific domains
+
+universal:
+  - category: Concurrency
+    patterns:
+      - "What if a background job runs while user is mid-action?"
+      - "What if concurrent transactions with opposing lock orders cause deadlock?"
+      - "What if two users perform this action simultaneously?"
+
+  - category: State & Data
+    patterns:
+      - "What if referenced data was deleted?"
+      - "What if data changed between read and write?"
+      - "What if cache is stale?"
+      - "What if pagination offset shifts due to concurrent deletes?"
+
+  - category: Error Paths
+    patterns:
+      - "What if this fails halfway through?"
+      - "What if retry logic triggers duplicate actions?"
+      - "What if the error message leaks sensitive info?"
+
+  - category: Resource Limits
+    patterns:
+      - "What if disk fills up on database or temp directory?"
+      - "What if memory is exhausted during concurrent operations?"
+      - "What if N+1 queries cause connection pool exhaustion under load?"
+      - "What if long-running operations hold DB connections open?"
+
+  - category: Configuration
+    patterns:
+      - "What if config is loaded at import time before env vars are set?"
+      - "What if test config differs from production config?"
+
+domain_specific:
+  auth:
+    keywords: [login, auth, token, session, jwt, oauth, supabase, user, credential, password, permission]
+    patterns:
+      - "What if different components use different auth providers/verification methods?"
+      - "What if a secret token is leaked via logs, localStorage, or URL?"
+      - "What if user exists in one auth system but not the migrated one?"
+      - "What if user's permissions are revoked but their JWT is still valid?"
+      - "What if token refresh happens simultaneously from two devices?"
+      - "What if clock skew exists between auth service and database?"
+      - "What if direct storage URL bypasses API-level auth checks?"
+      - "What if token verification works in tests but fails in production?"
+
+  database:
+    keywords: [postgres, sql, query, connection, pool, transaction, migration, db, database, orm]
+    patterns:
+      - "What if N+1 queries cause connection pool exhaustion under load?"
+      - "What if pagination offset shifts due to concurrent deletes?"
+      - "What if concurrent transactions with opposing lock orders cause deadlock?"
+      - "What if integer ID or counter reaches maximum value?"
+      - "What if long-running operations hold DB connections open?"
+      - "What if read replica hasn't received data when user is redirected?"
+      - "What if DB migration runs out of memory mid-execution?"
+      - "What if two integrated products have inconsistent DB states?"
+
+  caching:
+    keywords: [cache, redis, memcached, invalidate, ttl, distributed]
+    patterns:
+      - "What if cache invalidation timing creates stale reads?"
+      - "What if consistent hashing rebalances during node failure?"
+      - "What if hot key problem overwhelms single Redis instance?"
+      - "What if cache stampede occurs on cold start or expiry?"
+      - "What if split-brain scenario happens in multi-node setup?"
+      - "What if cache fails open vs fails closed during outage?"
+
+  background_jobs:
+    keywords: [job, worker, queue, celery, sidekiq, async, task, cron]
+    patterns:
+      - "What if task queue backlog occurs during traffic spikes?"
+      - "What if worker starvation happens from long-running jobs?"
+      - "What if duplicate processing occurs on retry (idempotency gaps)?"
+      - "What if dead letter queue overflows?"
+      - "What if job serialization fails on schema change?"
+
+  observability:
+    keywords: [metric, trace, log, monitor, alert, prometheus, datadog, newrelic]
+    patterns:
+      - "What if metric cardinality explodes from high-cardinality labels?"
+      - "What if trace sampling misses critical error paths?"
+      - "What if dashboard lag hides real-time incidents?"
+      - "What if alert fatigue occurs from noisy thresholds?"
+      - "What if correlation IDs are missing across service boundaries?"
+
+  file_upload:
+    keywords: [upload, file, attachment, image, document, s3, storage, multipart]
+    patterns:
+      - "What if file extension doesn't match actual file content?"
+      - "What if file header claims massive size but file is tiny (or vice versa)?"
+      - "What if uploaded file contains malicious code in EXIF metadata?"
+      - "What if two users upload files with identical names simultaneously?"
+      - "What if file validation only checks magic bytes, not full content?"
+      - "What if many users upload large files simultaneously?"
+      - "What if storage deletion fails but DB deletion succeeds (orphaned files)?"
+
+  image_processing:
+    keywords: [image, resize, thumbnail, pillow, imagemagick, process, convert, transform, exif]
+    patterns:
+      - "What if image has malicious EXIF metadata claiming huge dimensions?"
+      - "What if image processing hangs indefinitely on corrupt file?"
+      - "What if format conversion loses data (transparency, color profile)?"
+      - "What if memory is exhausted during concurrent image processing?"
+
+  api:
+    keywords: [api, rate, limit, endpoint, request, header, rest, graphql]
+    patterns:
+      - "What if rate limiting is bypassed via header spoofing (X-Forwarded-For)?"
+      - "What if rate limiting fails open when Redis is down?"
+
+  security:
+    keywords: [xss, injection, sanitize, escape, vulnerability, security, attack, csrf]
+    patterns:
+      - "What if user input in metadata field contains XSS payload?"
+
+  search:
+    keywords: [search, query, filter, index, elasticsearch, algolia, solr, fulltext]
+    patterns:
+      - "What if search index is out of sync with database?"
+      - "What if user searches while reindex is running?"
+      - "What if search query triggers regex catastrophic backtracking?"
