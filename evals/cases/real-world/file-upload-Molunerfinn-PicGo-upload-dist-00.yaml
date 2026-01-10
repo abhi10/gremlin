@@ -1,0 +1,19 @@
+name: file-upload-Molunerfinn-PicGo-upload-dist-00
+description: "Real-world file-upload code from Molunerfinn/PicGo (26160\u2B50). File:\
+  \ scripts/upload-dist.js"
+source:
+  repo: Molunerfinn/PicGo
+  file: scripts/upload-dist.js
+  url: https://github.com/Molunerfinn/PicGo/blob/HEAD/scripts/upload-dist.js
+  stars: 26160
+  domain: file-upload
+input:
+  scope: File upload handler
+  context_file: ../fixtures/file-upload-Molunerfinn-PicGo-upload-dist-00.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - file-upload
+  keywords: []

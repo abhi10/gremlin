@@ -1,0 +1,18 @@
+name: auth-sahat-satellizer-AuthResource-05
+description: "Real-world auth code from sahat/satellizer (7826\u2B50). File: examples/server/java/src/main/java/com/example/helloworld/resources/AuthResource.java"
+source:
+  repo: sahat/satellizer
+  file: examples/server/java/src/main/java/com/example/helloworld/resources/AuthResource.java
+  url: https://github.com/sahat/satellizer/blob/HEAD/examples/server/java/src/main/java/com/example/helloworld/resources/AuthResource.java
+  stars: 7826
+  domain: auth
+input:
+  scope: Authentication system
+  context_file: ../fixtures/auth-sahat-satellizer-AuthResource-05.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - auth
+  keywords: []

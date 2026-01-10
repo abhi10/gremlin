@@ -1,0 +1,11 @@
+{
+  "repo": "sahat/satellizer",
+  "file_path": "examples/server/java/src/main/java/com/example/helloworld/auth/AuthUtils.java",
+  "url": "https://github.com/sahat/satellizer/blob/HEAD/examples/server/java/src/main/java/com/example/helloworld/auth/AuthUtils.java",
+  "domain": "auth",
+  "language": "TypeScript",
+  "stars": 7826,
+  "repo_description": "Token-based AngularJS Authentication",
+  "repo_topics": [],
+  "file_size": 1818
+}

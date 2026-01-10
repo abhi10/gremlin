@@ -1,0 +1,29 @@
+{
+  "repo": "Molunerfinn/PicGo",
+  "file_path": "scripts/upload-dist.js",
+  "url": "https://github.com/Molunerfinn/PicGo/blob/HEAD/scripts/upload-dist.js",
+  "domain": "file-upload",
+  "language": "TypeScript",
+  "stars": 26160,
+  "repo_description": ":rocket: The Ultimate Image Uploader for Efficient Creators. Supports Obsidian, Typora, VS Code etc. and 60+ image hosting services  (S3, GitHub, Cloudflare R2, Imgur, Aliyun OSS...). Paste, upload, done.",
+  "repo_topics": [
+    "aliyun-oss",
+    "cloudflare-r2",
+    "electron",
+    "electron-app",
+    "electron-vue",
+    "github",
+    "image",
+    "imageuploader",
+    "imgur",
+    "imgur-uploader",
+    "qiniu",
+    "s3-uploader",
+    "smms",
+    "tencent-cos",
+    "upyun",
+    "vue",
+    "weibo"
+  ],
+  "file_size": 7638
+}

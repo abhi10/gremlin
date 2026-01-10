@@ -1,0 +1,27 @@
+{
+  "repo": "microsoft/playwright",
+  "file_path": "utils/doclint/api_parser.js",
+  "url": "https://github.com/microsoft/playwright/blob/HEAD/utils/doclint/api_parser.js",
+  "domain": "api",
+  "language": "TypeScript",
+  "stars": 81020,
+  "repo_description": "Playwright is a framework for Web Testing and Automation. It allows testing Chromium, Firefox and WebKit with a single API. ",
+  "repo_topics": [
+    "automation",
+    "chrome",
+    "chromium",
+    "e2e-testing",
+    "electron",
+    "end-to-end-testing",
+    "firefox",
+    "javascript",
+    "playwright",
+    "test",
+    "test-automation",
+    "testing",
+    "testing-tools",
+    "web",
+    "webkit"
+  ],
+  "file_size": 16501
+}

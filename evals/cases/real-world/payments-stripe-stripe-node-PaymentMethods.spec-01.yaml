@@ -1,0 +1,19 @@
+name: payments-stripe-stripe-node-PaymentMethods.spec-01
+description: "Real-world payments code from stripe/stripe-node (4305\u2B50). File:\
+  \ test/resources/PaymentMethods.spec.js"
+source:
+  repo: stripe/stripe-node
+  file: test/resources/PaymentMethods.spec.js
+  url: https://github.com/stripe/stripe-node/blob/HEAD/test/resources/PaymentMethods.spec.js
+  stars: 4305
+  domain: payments
+input:
+  scope: Payment processing
+  context_file: ../fixtures/payments-stripe-stripe-node-PaymentMethods.spec-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - payments
+  keywords: []

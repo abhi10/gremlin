@@ -1,0 +1,19 @@
+{
+  "repo": "unkeyed/unkey",
+  "file_path": "pkg/zen/auth.go",
+  "url": "https://github.com/unkeyed/unkey/blob/HEAD/pkg/zen/auth.go",
+  "domain": "auth",
+  "language": "TypeScript",
+  "stars": 5136,
+  "repo_description": "The Developer Platform for Modern APIs",
+  "repo_topics": [
+    "api",
+    "api-keys",
+    "authentication",
+    "authorization",
+    "gateway",
+    "open-source",
+    "rate-limiter"
+  ],
+  "file_size": 1623
+}

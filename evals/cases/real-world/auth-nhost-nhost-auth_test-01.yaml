@@ -1,0 +1,18 @@
+name: auth-nhost-nhost-auth_test-01
+description: "Real-world auth code from nhost/nhost (9021\u2B50). File: cli/dockercompose/auth_test.go"
+source:
+  repo: nhost/nhost
+  file: cli/dockercompose/auth_test.go
+  url: https://github.com/nhost/nhost/blob/HEAD/cli/dockercompose/auth_test.go
+  stars: 9021
+  domain: auth
+input:
+  scope: Authentication system
+  context_file: ../fixtures/auth-nhost-nhost-auth_test-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - auth
+  keywords: []

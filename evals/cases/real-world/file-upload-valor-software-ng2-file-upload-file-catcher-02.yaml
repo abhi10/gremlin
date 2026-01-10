@@ -1,0 +1,19 @@
+name: file-upload-valor-software-ng2-file-upload-file-catcher-02
+description: "Real-world file-upload code from valor-software/ng2-file-upload (1908\u2B50\
+  ). File: apps/demo/src/app/components/file-upload/file-catcher.js"
+source:
+  repo: valor-software/ng2-file-upload
+  file: apps/demo/src/app/components/file-upload/file-catcher.js
+  url: https://github.com/valor-software/ng2-file-upload/blob/HEAD/apps/demo/src/app/components/file-upload/file-catcher.js
+  stars: 1908
+  domain: file-upload
+input:
+  scope: File upload handler
+  context_file: ../fixtures/file-upload-valor-software-ng2-file-upload-file-catcher-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - file-upload
+  keywords: []

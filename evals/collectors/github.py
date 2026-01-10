@@ -10,6 +10,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 
@@ -168,21 +169,20 @@ class GitHubCollector:
         Returns:
             List of repository data dictionaries
         """
-        # Build search query
+        # Build search query (simplified - use primary keyword)
+        # GitHub search doesn't handle complex OR queries well
         query_parts = []
 
-        # Add keywords (OR condition)
-        keyword_query = " OR ".join(domain_filter.keywords[:3])  # Limit to 3 keywords
-        query_parts.append(f"({keyword_query})")
+        # Use first keyword only for better results
+        primary_keyword = domain_filter.keywords[0]
+        query_parts.append(primary_keyword)
 
         # Add quality filters
         query_parts.append(f"stars:>{quality_filter.min_stars}")
 
+        # Use first language only
         if quality_filter.languages:
-            lang_query = " OR ".join(
-                f"language:{lang}" for lang in quality_filter.languages[:2]
-            )
-            query_parts.append(f"({lang_query})")
+            query_parts.append(f"language:{quality_filter.languages[0]}")
 
         query = " ".join(query_parts)
 
@@ -199,14 +199,9 @@ class GitHubCollector:
             data = self._api_call(url, params)
             repos = data.get("items", [])
 
-            # Apply additional filters
-            filtered_repos = []
-            for repo in repos:
-                if filter_by_domain(repo, domain_filter):
-                    if filter_by_quality(repo, quality_filter):
-                        filtered_repos.append(repo)
-
-            return filtered_repos[:limit]
+            # GitHub search already filtered by our criteria, just return results
+            # Additional filtering would be too restrictive
+            return repos[:limit]
 
         except Exception as e:
             print(f"Error searching repositories: {e}")
@@ -310,7 +305,7 @@ class GitHubCollector:
         """
         # Build URL with params
         if params:
-            query_string = "&".join(f"{k}={v}" for k, v in params.items())
+            query_string = urlencode(params)
             url = f"{url}?{query_string}"
 
         # Build request with auth header

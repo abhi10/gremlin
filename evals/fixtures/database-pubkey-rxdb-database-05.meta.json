@@ -1,0 +1,32 @@
+{
+  "repo": "pubkey/rxdb",
+  "file_path": "examples/node/src/database.js",
+  "url": "https://github.com/pubkey/rxdb/blob/HEAD/examples/node/src/database.js",
+  "domain": "database",
+  "language": "TypeScript",
+  "stars": 22956,
+  "repo_description": "A fast, local first, reactive Database for JavaScript Applications https://rxdb.info/",
+  "repo_topics": [
+    "angular",
+    "browser-database",
+    "couchdb",
+    "crdt",
+    "database",
+    "firebase",
+    "graphql",
+    "indexeddb",
+    "ionic",
+    "local-first",
+    "localstorage",
+    "nodejs",
+    "nosql",
+    "postgres",
+    "pouchdb",
+    "react-native",
+    "realtime",
+    "realtime-database",
+    "rxdb",
+    "sqlite"
+  ],
+  "file_size": 1710
+}

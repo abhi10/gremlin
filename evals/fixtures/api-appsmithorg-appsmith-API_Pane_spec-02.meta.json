@@ -1,0 +1,32 @@
+{
+  "repo": "appsmithorg/appsmith",
+  "file_path": "app/client/cypress/e2e/Regression/ClientSide/ExplorerTests/API_Pane_spec.js",
+  "url": "https://github.com/appsmithorg/appsmith/blob/HEAD/app/client/cypress/e2e/Regression/ClientSide/ExplorerTests/API_Pane_spec.js",
+  "domain": "api",
+  "language": "TypeScript",
+  "stars": 38868,
+  "repo_description": "Platform to build admin panels, internal tools, and dashboards. Integrates with 25+ databases and any API.",
+  "repo_topics": [
+    "admin-dashboard",
+    "admin-panels",
+    "app-builder",
+    "automation",
+    "crud",
+    "custom-internal",
+    "developer-tools",
+    "gui",
+    "gui-application",
+    "hacktoberfest",
+    "internal-tools",
+    "java",
+    "javascript",
+    "low-code",
+    "low-code-framework",
+    "react",
+    "self-hosted",
+    "typescript",
+    "webdevelopment",
+    "workflows"
+  ],
+  "file_size": 4854
+}

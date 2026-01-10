@@ -1,0 +1,31 @@
+{
+  "repo": "nhost/nhost",
+  "file_path": "cli/dockercompose/auth.go",
+  "url": "https://github.com/nhost/nhost/blob/HEAD/cli/dockercompose/auth.go",
+  "domain": "auth",
+  "language": "TypeScript",
+  "stars": 9021,
+  "repo_description": "The Open Source Firebase Alternative with GraphQL.",
+  "repo_topics": [
+    "authentication",
+    "backend",
+    "backend-as-a-service",
+    "database",
+    "firebase",
+    "flutter",
+    "graphql",
+    "graphql-api",
+    "hasura",
+    "javascript",
+    "nextjs",
+    "nhost",
+    "postgres",
+    "react",
+    "serverless",
+    "serverless-functions",
+    "storage",
+    "typescript",
+    "vue"
+  ],
+  "file_size": 2709
+}

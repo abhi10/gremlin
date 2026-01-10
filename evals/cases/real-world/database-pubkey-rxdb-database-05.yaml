@@ -1,0 +1,18 @@
+name: database-pubkey-rxdb-database-05
+description: "Real-world database code from pubkey/rxdb (22956\u2B50). File: examples/node/src/database.js"
+source:
+  repo: pubkey/rxdb
+  file: examples/node/src/database.js
+  url: https://github.com/pubkey/rxdb/blob/HEAD/examples/node/src/database.js
+  stars: 22956
+  domain: database
+input:
+  scope: Database operations
+  context_file: ../fixtures/database-pubkey-rxdb-database-05.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - database
+  keywords: []

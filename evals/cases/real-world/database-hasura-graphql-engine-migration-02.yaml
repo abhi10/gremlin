@@ -1,0 +1,19 @@
+name: database-hasura-graphql-engine-migration-02
+description: "Real-world database code from hasura/graphql-engine (31874\u2B50). File:\
+  \ cli/migrate/migration.go"
+source:
+  repo: hasura/graphql-engine
+  file: cli/migrate/migration.go
+  url: https://github.com/hasura/graphql-engine/blob/HEAD/cli/migrate/migration.go
+  stars: 31874
+  domain: database
+input:
+  scope: Database operations
+  context_file: ../fixtures/database-hasura-graphql-engine-migration-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - database
+  keywords: []
