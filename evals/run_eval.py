@@ -5,6 +5,7 @@ import json
 import re
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
@@ -16,66 +17,179 @@ from rich.table import Table
 console = Console()
 
 
-def load_case(case_path: Path) -> dict:
-    """Load eval case from YAML file."""
-    with open(case_path) as f:
-        return yaml.safe_load(f)
+@dataclass
+class EvalMetrics:
+    """Metrics extracted from output."""
+
+    critical: int = 0
+    high: int = 0
+    medium: int = 0
+    low: int = 0
+    total_risks: int = 0
+
+    @classmethod
+    def from_text(cls, text: str) -> "EvalMetrics":
+        """Extract metrics from output text."""
+        t = text.lower()
+        critical = len(re.findall(r"critical", t))
+        high = len(re.findall(r"(?<!-)high(?!-)", t))
+        medium = len(re.findall(r"medium", t))
+        low = len(re.findall(r"(?<!-)low(?!-)", t))
+        what_ifs = len(re.findall(r"what if", t))
+
+        return cls(
+            critical=critical,
+            high=high,
+            medium=medium,
+            low=low,
+            total_risks=max(what_ifs, critical + high + medium + low),
+        )
 
 
-def run_gremlin(case: dict) -> dict:
-    """Run Gremlin CLI and capture output."""
-    input_cfg = case["input"]
-    scope = input_cfg["scope"]
+@dataclass
+class EvalResult:
+    """Result of evaluating an output against criteria."""
 
-    cmd = ["gremlin", "review", scope, "--output", "json"]
+    metrics: EvalMetrics
+    keywords_found: list[str] = field(default_factory=list)
+    keywords_missing: list[str] = field(default_factory=list)
+    categories_found: list[str] = field(default_factory=list)
+    categories_missing: list[str] = field(default_factory=list)
+    passes: list[str] = field(default_factory=list)
+    fails: list[str] = field(default_factory=list)
 
-    # Add context
-    if "context_file" in input_cfg:
-        cmd.extend(["--context", f"@{input_cfg['context_file']}"])
-    elif "context" in input_cfg:
-        cmd.extend(["--context", input_cfg["context"]])
+    @property
+    def score(self) -> float:
+        total = len(self.passes) + len(self.fails)
+        return len(self.passes) / total if total > 0 else 0.0
 
-    if "depth" in input_cfg:
-        cmd.extend(["--depth", input_cfg["depth"]])
-    if "threshold" in input_cfg:
-        cmd.extend(["--threshold", str(input_cfg["threshold"])])
+
+@dataclass
+class ExpectedCriteria:
+    """Expected criteria for an eval case."""
+
+    min_critical: int = 0
+    min_high: int = 0
+    min_total: int = 0
+    categories: list[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
+    domains: list[str] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ExpectedCriteria":
+        return cls(
+            min_critical=d.get("min_critical", 0),
+            min_high=d.get("min_high", 0),
+            min_total=d.get("min_total", 0),
+            categories=d.get("categories", []),
+            keywords=d.get("keywords", []),
+            domains=d.get("domains", []),
+        )
+
+
+@dataclass
+class EvalCase:
+    """An evaluation case with input and expected output."""
+
+    name: str
+    description: str
+    scope: str
+    context: str | None
+    context_file: str | None
+    depth: str
+    threshold: int
+    expected: ExpectedCriteria
+
+    @classmethod
+    def from_yaml(cls, path: Path) -> "EvalCase":
+        with open(path) as f:
+            data = yaml.safe_load(f)
+
+        inp = data.get("input", {})
+        return cls(
+            name=data.get("name", path.stem),
+            description=data.get("description", ""),
+            scope=inp.get("scope", ""),
+            context=inp.get("context"),
+            context_file=inp.get("context_file"),
+            depth=inp.get("depth", "quick"),
+            threshold=inp.get("threshold", 80),
+            expected=ExpectedCriteria.from_dict(data.get("expected", {})),
+        )
+
+    def resolve_context(self) -> str | None:
+        """Resolve context from file or inline."""
+        if self.context_file:
+            path = Path(self.context_file)
+            return path.read_text() if path.exists() else None
+        return self.context
+
+
+def evaluate(output: str, expected: ExpectedCriteria) -> EvalResult:
+    """Evaluate output against expected criteria."""
+    metrics = EvalMetrics.from_text(output)
+    output_lower = output.lower()
+
+    # Check keywords
+    kw_found = [k for k in expected.keywords if k.lower() in output_lower]
+    kw_missing = [k for k in expected.keywords if k.lower() not in output_lower]
+
+    # Check categories
+    cat_found = [c for c in expected.categories if c.lower() in output_lower]
+    cat_missing = [c for c in expected.categories if c.lower() not in output_lower]
+
+    # Build pass/fail list
+    passes, fails = [], []
+
+    checks = [
+        (metrics.critical >= expected.min_critical,
+         f"Critical: {metrics.critical} >= {expected.min_critical}"),
+        (metrics.high >= expected.min_high,
+         f"High: {metrics.high} >= {expected.min_high}"),
+        (metrics.total_risks >= expected.min_total,
+         f"Total: {metrics.total_risks} >= {expected.min_total}"),
+        (len(kw_found) >= len(expected.keywords) / 2 if expected.keywords else True,
+         f"Keywords: {len(kw_found)}/{len(expected.keywords)}"),
+        (len(cat_found) >= len(expected.categories) / 2 if expected.categories else True,
+         f"Categories: {len(cat_found)}/{len(expected.categories)}"),
+    ]
+
+    for passed, msg in checks:
+        (passes if passed else fails).append(msg)
+
+    return EvalResult(
+        metrics=metrics,
+        keywords_found=kw_found,
+        keywords_missing=kw_missing,
+        categories_found=cat_found,
+        categories_missing=cat_missing,
+        passes=passes,
+        fails=fails,
+    )
+
+
+def run_gremlin(case: EvalCase) -> str:
+    """Run Gremlin CLI and return output."""
+    cmd = ["gremlin", "review", case.scope, "--output", "json",
+           "--depth", case.depth, "--threshold", str(case.threshold)]
+
+    if case.context_file:
+        cmd.extend(["--context", f"@{case.context_file}"])
+    elif case.context:
+        cmd.extend(["--context", case.context])
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        output = result.stdout
-
-        # Try to parse JSON from output
-        try:
-            return {"raw": output, "parsed": json.loads(output), "error": None}
-        except json.JSONDecodeError:
-            # Fallback: extract risk info from raw output
-            return {"raw": output, "parsed": None, "error": None}
-    except subprocess.TimeoutExpired:
-        return {"raw": "", "parsed": None, "error": "timeout"}
-    except Exception as e:
-        return {"raw": "", "parsed": None, "error": str(e)}
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+        return result.stdout
+    except (subprocess.TimeoutExpired, Exception) as e:
+        return f"Error: {e}"
 
 
-def run_raw_claude(case: dict) -> dict:
+def run_raw_claude(case: EvalCase) -> str:
     """Run raw Claude without Gremlin patterns."""
-    input_cfg = case["input"]
-    scope = input_cfg["scope"]
+    context = case.resolve_context() or ""
 
-    # Build context
-    context = ""
-    if "context_file" in input_cfg:
-        context_path = Path(input_cfg["context_file"])
-        if context_path.exists():
-            context = context_path.read_text()
-    elif "context" in input_cfg:
-        context = input_cfg["context"]
-
-    prompt = f"""Analyze this scope for risks: {scope}
+    prompt = f"""Analyze this scope for risks: {case.scope}
 
 {f"Context: {context}" if context else ""}
 
@@ -94,257 +208,143 @@ Focus on non-obvious risks. Skip generic advice."""
             max_tokens=4096,
             messages=[{"role": "user", "content": prompt}],
         )
-        output = response.content[0].text
-        return {"raw": output, "parsed": None, "error": None}
+        return response.content[0].text
     except Exception as e:
-        return {"raw": "", "parsed": None, "error": str(e)}
+        return f"Error: {e}"
 
 
-def extract_metrics(output: str) -> dict:
-    """Extract metrics from output text."""
-    output_lower = output.lower()
-
-    # Count severities
-    critical = len(re.findall(r"critical", output_lower))
-    high = len(re.findall(r"(?<!-)high(?!-)", output_lower))
-    medium = len(re.findall(r"medium", output_lower))
-    low = len(re.findall(r"(?<!-)low(?!-)", output_lower))
-
-    # Count "what if" questions as proxy for total risks
-    what_ifs = len(re.findall(r"what if", output_lower))
-
-    return {
-        "critical": critical,
-        "high": high,
-        "medium": medium,
-        "low": low,
-        "total_risks": max(what_ifs, critical + high + medium + low),
-    }
-
-
-def check_keywords(output: str, keywords: list[str]) -> dict:
-    """Check which keywords appear in output."""
-    output_lower = output.lower()
-    found = []
-    missing = []
-
-    for kw in keywords:
-        if kw.lower() in output_lower:
-            found.append(kw)
-        else:
-            missing.append(kw)
-
-    return {"found": found, "missing": missing}
-
-
-def check_categories(output: str, categories: list[str]) -> dict:
-    """Check which risk categories are covered."""
-    output_lower = output.lower()
-    found = []
-    missing = []
-
-    for cat in categories:
-        if cat.lower() in output_lower:
-            found.append(cat)
-        else:
-            missing.append(cat)
-
-    return {"found": found, "missing": missing}
-
-
-def evaluate_output(output: str, expected: dict) -> dict:
-    """Evaluate output against expected criteria."""
-    metrics = extract_metrics(output)
-    keywords = check_keywords(output, expected.get("keywords", []))
-    categories = check_categories(output, expected.get("categories", []))
-
-    # Calculate pass/fail
-    passes = []
-    fails = []
-
-    if metrics["critical"] >= expected.get("min_critical", 0):
-        passes.append(f"Critical risks: {metrics['critical']} >= {expected.get('min_critical', 0)}")
-    else:
-        fails.append(f"Critical risks: {metrics['critical']} < {expected.get('min_critical', 0)}")
-
-    if metrics["high"] >= expected.get("min_high", 0):
-        passes.append(f"High risks: {metrics['high']} >= {expected.get('min_high', 0)}")
-    else:
-        fails.append(f"High risks: {metrics['high']} < {expected.get('min_high', 0)}")
-
-    if metrics["total_risks"] >= expected.get("min_total", 0):
-        passes.append(f"Total risks: {metrics['total_risks']} >= {expected.get('min_total', 0)}")
-    else:
-        fails.append(f"Total risks: {metrics['total_risks']} < {expected.get('min_total', 0)}")
-
-    keyword_coverage = len(keywords["found"]) / len(expected.get("keywords", []) or [1])
-    if keyword_coverage >= 0.5:
-        passes.append(f"Keywords: {len(keywords['found'])}/{len(expected.get('keywords', []))}")
-    else:
-        fails.append(f"Keywords: {len(keywords['found'])}/{len(expected.get('keywords', []))}")
-
-    exp_categories = expected.get("categories", [])
-    category_coverage = len(categories["found"]) / len(exp_categories or [1])
-    cat_msg = f"Categories: {len(categories['found'])}/{len(exp_categories)}"
-    if category_coverage >= 0.5:
-        passes.append(cat_msg)
-    else:
-        fails.append(cat_msg)
-
-    return {
-        "metrics": metrics,
-        "keywords": keywords,
-        "categories": categories,
-        "passes": passes,
-        "fails": fails,
-        "score": len(passes) / (len(passes) + len(fails)) if (passes or fails) else 0,
-    }
-
-
-def run_single_eval(case_path: Path, save_results: bool = True) -> dict:
-    """Run a single eval case."""
-    case = load_case(case_path)
-    console.print(f"\n[bold cyan]Running eval:[/bold cyan] {case['name']}")
-    console.print(f"[dim]{case['description']}[/dim]\n")
-
-    # Run Gremlin
-    console.print("[yellow]Running Gremlin...[/yellow]")
-    gremlin_result = run_gremlin(case)
-
-    # Run raw Claude
-    console.print("[yellow]Running raw Claude...[/yellow]")
-    claude_result = run_raw_claude(case)
-
-    # Evaluate both
-    expected = case.get("expected", {})
-    gremlin_eval = evaluate_output(gremlin_result["raw"], expected)
-    claude_eval = evaluate_output(claude_result["raw"], expected)
-
-    # Display comparison
-    table = Table(title=f"Results: {case['name']}")
+def display_results(case: EvalCase, gremlin: EvalResult, claude: EvalResult) -> None:
+    """Display comparison table."""
+    table = Table(title=f"Results: {case.name}")
     table.add_column("Metric", style="cyan")
     table.add_column("Gremlin", style="green")
     table.add_column("Raw Claude", style="yellow")
 
-    gm = gremlin_eval["metrics"]
-    cm = claude_eval["metrics"]
-    table.add_row("Critical", str(gm["critical"]), str(cm["critical"]))
-    table.add_row("High", str(gm["high"]), str(cm["high"]))
-    table.add_row("Medium", str(gm["medium"]), str(cm["medium"]))
-    table.add_row("Low", str(gm["low"]), str(cm["low"]))
-    table.add_row("Total Risks", str(gm["total_risks"]), str(cm["total_risks"]))
+    gm, cm = gremlin.metrics, claude.metrics
+    rows = [
+        ("Critical", gm.critical, cm.critical),
+        ("High", gm.high, cm.high),
+        ("Medium", gm.medium, cm.medium),
+        ("Low", gm.low, cm.low),
+        ("Total Risks", gm.total_risks, cm.total_risks),
+        ("Keywords", f"{len(gremlin.keywords_found)}/{len(case.expected.keywords)}",
+         f"{len(claude.keywords_found)}/{len(case.expected.keywords)}"),
+        ("Categories", f"{len(gremlin.categories_found)}/{len(case.expected.categories)}",
+         f"{len(claude.categories_found)}/{len(case.expected.categories)}"),
+        ("Score", f"{gremlin.score:.0%}", f"{claude.score:.0%}"),
+    ]
 
-    exp_kw = expected.get("keywords", [])
-    exp_cat = expected.get("categories", [])
-    gkw = len(gremlin_eval["keywords"]["found"])
-    ckw = len(claude_eval["keywords"]["found"])
-    gcat = len(gremlin_eval["categories"]["found"])
-    ccat = len(claude_eval["categories"]["found"])
-
-    table.add_row("Keywords Found", f"{gkw}/{len(exp_kw)}", f"{ckw}/{len(exp_kw)}")
-    table.add_row("Categories Found", f"{gcat}/{len(exp_cat)}", f"{ccat}/{len(exp_cat)}")
-    table.add_row("Score", f"{gremlin_eval['score']:.0%}", f"{claude_eval['score']:.0%}")
+    for row in rows:
+        table.add_row(row[0], str(row[1]), str(row[2]))
 
     console.print(table)
 
-    # Show pass/fail details
-    if gremlin_eval["fails"]:
+    if gremlin.fails:
         console.print("\n[red]Gremlin Fails:[/red]")
-        for f in gremlin_eval["fails"]:
+        for f in gremlin.fails:
             console.print(f"  - {f}")
 
-    if claude_eval["fails"]:
+    if claude.fails:
         console.print("\n[red]Claude Fails:[/red]")
-        for f in claude_eval["fails"]:
+        for f in claude.fails:
             console.print(f"  - {f}")
+
+
+def determine_winner(gremlin: EvalResult, claude: EvalResult) -> str:
+    """Determine winner based on scores."""
+    if gremlin.score > claude.score:
+        return "gremlin"
+    elif claude.score > gremlin.score:
+        return "claude"
+    return "tie"
+
+
+def run_eval(case_path: Path, save: bool = True) -> dict:
+    """Run a single eval case."""
+    case = EvalCase.from_yaml(case_path)
+
+    console.print(f"\n[bold cyan]Running eval:[/bold cyan] {case.name}")
+    console.print(f"[dim]{case.description}[/dim]\n")
+
+    console.print("[yellow]Running Gremlin...[/yellow]")
+    gremlin_output = run_gremlin(case)
+
+    console.print("[yellow]Running raw Claude...[/yellow]")
+    claude_output = run_raw_claude(case)
+
+    gremlin_eval = evaluate(gremlin_output, case.expected)
+    claude_eval = evaluate(claude_output, case.expected)
+
+    display_results(case, gremlin_eval, claude_eval)
 
     result = {
-        "case": case["name"],
+        "case": case.name,
         "timestamp": datetime.now().isoformat(),
-        "gremlin": {
-            "output": gremlin_result["raw"],
-            "evaluation": gremlin_eval,
-            "error": gremlin_result["error"],
-        },
-        "claude": {
-            "output": claude_result["raw"],
-            "evaluation": claude_eval,
-            "error": claude_result["error"],
-        },
-        "winner": (
-            "gremlin" if gremlin_eval["score"] > claude_eval["score"]
-            else "claude" if claude_eval["score"] > gremlin_eval["score"]
-            else "tie"
-        ),
+        "gremlin": {"output": gremlin_output, "score": gremlin_eval.score},
+        "claude": {"output": claude_output, "score": claude_eval.score},
+        "winner": determine_winner(gremlin_eval, claude_eval),
     }
 
-    # Save results
-    if save_results:
+    if save:
         results_dir = Path(__file__).parent / "results"
         results_dir.mkdir(exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        result_file = results_dir / f"{case['name']}-{timestamp}.json"
-        with open(result_file, "w") as f:
-            json.dump(result, f, indent=2, default=str)
-        console.print(f"\n[dim]Results saved to: {result_file}[/dim]")
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        result_file = results_dir / f"{case.name}-{ts}.json"
+        result_file.write_text(json.dumps(result, indent=2, default=str))
+        console.print(f"\n[dim]Saved: {result_file}[/dim]")
 
     return result
 
 
-def run_all_evals(cases_dir: Path = None) -> list[dict]:
-    """Run all eval cases in directory."""
-    if cases_dir is None:
-        cases_dir = Path(__file__).parent / "cases"
-
-    results = []
+def run_all(cases_dir: Path | None = None) -> list[dict]:
+    """Run all eval cases."""
+    cases_dir = cases_dir or Path(__file__).parent / "cases"
     case_files = sorted(cases_dir.glob("*.yaml"))
 
     console.print(f"[bold]Found {len(case_files)} eval cases[/bold]")
 
+    results = []
     for case_file in case_files:
         try:
-            result = run_single_eval(case_file)
-            results.append(result)
+            results.append(run_eval(case_file))
         except Exception as e:
             console.print(f"[red]Error running {case_file.name}: {e}[/red]")
 
     # Summary
     console.print("\n" + "=" * 50)
     console.print("[bold]Summary[/bold]")
+    wins = {"gremlin": 0, "claude": 0, "tie": 0}
+    for r in results:
+        wins[r["winner"]] += 1
 
-    gremlin_wins = sum(1 for r in results if r["winner"] == "gremlin")
-    claude_wins = sum(1 for r in results if r["winner"] == "claude")
-    ties = sum(1 for r in results if r["winner"] == "tie")
-
-    console.print(f"  Gremlin wins: {gremlin_wins}")
-    console.print(f"  Claude wins: {claude_wins}")
-    console.print(f"  Ties: {ties}")
+    console.print(f"  Gremlin wins: {wins['gremlin']}")
+    console.print(f"  Claude wins: {wins['claude']}")
+    console.print(f"  Ties: {wins['tie']}")
 
     return results
 
 
 def main():
-    """Main entry point."""
+    """CLI entry point."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Run Gremlin evals")
-    parser.add_argument("case", nargs="?", help="Specific case file to run")
+    parser.add_argument("case", nargs="?", help="Case name or path")
     parser.add_argument("--all", action="store_true", help="Run all cases")
     parser.add_argument("--no-save", action="store_true", help="Don't save results")
 
     args = parser.parse_args()
 
     if args.case:
-        case_path = Path(args.case)
-        if not case_path.exists():
-            # Try in cases directory
-            case_path = Path(__file__).parent / "cases" / f"{args.case}.yaml"
-        if not case_path.exists():
+        path = Path(args.case)
+        if not path.exists():
+            path = Path(__file__).parent / "cases" / f"{args.case}.yaml"
+        if not path.exists():
             console.print(f"[red]Case not found: {args.case}[/red]")
             sys.exit(1)
-        run_single_eval(case_path, save_results=not args.no_save)
+        run_eval(path, save=not args.no_save)
     elif args.all:
-        run_all_evals()
+        run_all()
     else:
         parser.print_help()
 
