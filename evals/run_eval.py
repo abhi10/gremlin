@@ -116,7 +116,11 @@ class EvalCase:
 
         inp = data.get("input", {})
         mode_str = data.get("mode", "cli").lower()
-        mode = EvalMode[mode_str.upper()] if mode_str.upper() in EvalMode.__members__ else EvalMode.CLI
+        mode = (
+            EvalMode[mode_str.upper()]
+            if mode_str.upper() in EvalMode.__members__
+            else EvalMode.CLI
+        )
 
         return cls(
             name=data.get("name", path.stem),
@@ -269,9 +273,12 @@ Surface non-obvious risks from real incidents, not theoretical vulnerabilities.
 5. Report with "What if?" framing
 """
 
+    # Build context section (avoid backslash in f-string for Python 3.10)
+    context_section = f"Context/Code:\n{context}" if context else ""
+
     user_prompt = f"""Analyze this code/scope for risks: {case.scope}
 
-{f"Context/Code:\n{context}" if context else ""}
+{context_section}
 
 Depth: {case.depth}
 Confidence threshold: Only include scenarios where you're >{case.threshold}% confident.
@@ -395,7 +402,10 @@ def run_eval(case_path: Path, save: bool = True) -> dict:
         agent_eval = evaluate(agent_output, case.expected)
 
         # Combine outputs for evaluation
-        combined_output = f"=== CLI Analysis ===\n{cli_output}\n\n=== Agent Analysis ===\n{agent_output}"
+        combined_output = (
+            f"=== CLI Analysis ===\n{cli_output}\n\n"
+            f"=== Agent Analysis ===\n{agent_output}"
+        )
         combined_eval = evaluate(combined_output, case.expected)
 
         # Display 3-way comparison
@@ -410,7 +420,12 @@ def run_eval(case_path: Path, save: bool = True) -> dict:
             ("Critical", cm.critical, am.critical, compm.critical),
             ("High", cm.high, am.high, compm.high),
             ("Total Risks", cm.total_risks, am.total_risks, compm.total_risks),
-            ("Score", f"{cli_eval.score:.0%}", f"{agent_eval.score:.0%}", f"{combined_eval.score:.0%}"),
+            (
+                "Score",
+                f"{cli_eval.score:.0%}",
+                f"{agent_eval.score:.0%}",
+                f"{combined_eval.score:.0%}",
+            ),
         ]
 
         for row in rows:
