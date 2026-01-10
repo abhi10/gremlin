@@ -1,0 +1,39 @@
+# Eval case: Pluggable Auth System PRD
+# Tests Gremlin's ability to find auth-specific risks from a PRD
+
+name: auth-prd
+description: Analyze pluggable auth system PRD for security and migration risks
+
+input:
+  scope: "pluggable auth system"
+  context_file: "/Users/abhishekrajuchamarthi/Dropbox/Mac/Documents/workspace_personal/native-ai/image-hosting-app/docs/future/PRD-pluggable-auth-system.md"
+  depth: quick
+  threshold: 80
+
+expected:
+  # Minimum risks by severity
+  min_critical: 1
+  min_high: 2
+  min_total: 5
+
+  # Expected risk categories (at least one risk should mention these)
+  categories:
+    - token
+    - migration
+    - provider
+    - oauth
+
+  # Expected domains to be detected
+  domains:
+    - auth
+
+  # Keywords that should appear in output (case-insensitive)
+  keywords:
+    - supabase
+    - jwt
+    - session
+
+notes: |
+  This PRD describes migrating from local JWT auth to Supabase.
+  Key risks include: provider switching, token verification, user migration,
+  OAuth state handling, and MFA challenges.

@@ -50,3 +50,6 @@ Thumbs.db
 # Internal docs and sessions (not for public)
 docs/
 sessions/
+
+# Eval results (timestamped, local only)
+evals/results/

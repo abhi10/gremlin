@@ -1,0 +1,39 @@
+# Eval case: Payment checkout flow
+# Tests Gremlin's ability to find payment-specific risks
+
+name: payments-checkout
+description: Analyze checkout flow with Stripe integration
+
+input:
+  scope: "checkout and payment flow"
+  context: |
+    Tech stack: Next.js, Stripe, PostgreSQL
+    Flow: Cart -> Checkout -> Stripe PaymentIntent -> Webhook -> Order confirmation
+    Using Stripe webhooks for payment confirmation
+    Idempotency keys for API calls
+  depth: quick
+  threshold: 80
+
+expected:
+  min_critical: 1
+  min_high: 2
+  min_total: 4
+
+  categories:
+    - webhook
+    - payment
+    - idempotency
+    - race
+
+  domains:
+    - payments
+
+  keywords:
+    - stripe
+    - webhook
+    - transaction
+
+notes: |
+  Standard Stripe checkout flow. Key risks include:
+  webhook timing, double charges, cart abandonment,
+  idempotency failures, and partial order states.

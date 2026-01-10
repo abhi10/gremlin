@@ -1,0 +1,44 @@
+# Eval case: File upload feature
+# Tests Gremlin's ability to find file handling risks
+
+name: file-upload
+description: Analyze file upload with S3 presigned URLs
+
+input:
+  scope: "image upload and storage"
+  context: |
+    Tech stack: FastAPI, AWS S3, PostgreSQL
+    Flow:
+    1. Client requests presigned URL
+    2. Client uploads directly to S3
+    3. Client confirms upload to backend
+    4. Backend validates and stores metadata
+    Using presigned URLs with 15-minute expiry
+    Max file size: 10MB
+    Allowed types: jpg, png, gif, webp
+  depth: quick
+  threshold: 80
+
+expected:
+  min_critical: 0
+  min_high: 1
+  min_total: 3
+
+  categories:
+    - upload
+    - validation
+    - storage
+    - timeout
+
+  domains:
+    - file_handling
+
+  keywords:
+    - s3
+    - presigned
+    - size
+
+notes: |
+  S3 presigned URL upload pattern. Key risks include:
+  presigned URL expiry, file type validation bypass,
+  incomplete uploads, metadata mismatch, and storage costs.
