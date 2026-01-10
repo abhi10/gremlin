@@ -1,0 +1,40 @@
+# Eval case: Simple CRUD - Negative Test
+# Tests that Gremlin doesn't cry wolf on trivial code
+
+name: negative-simple-crud
+description: Simple hello world endpoint - should NOT find many risks (tests over-triggering)
+
+input:
+  scope: "hello world endpoint"
+  context: |
+    from fastapi import FastAPI
+
+    app = FastAPI()
+
+    @app.get("/")
+    def hello():
+        return {"message": "Hello, World!"}
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok"}
+  depth: quick
+  threshold: 80
+
+expected:
+  # Maximum thresholds - should NOT exceed these
+  max_critical: 0
+  max_high: 1
+  max_total: 3
+
+  # No specific categories or keywords expected
+  categories: []
+  keywords: []
+  domains: []
+
+notes: |
+  This is a NEGATIVE test case to prevent over-triggering.
+  A simple hello world endpoint has no auth, no database, no file uploads,
+  no external dependencies - there should be minimal risks flagged.
+
+  If Gremlin finds critical/high risks here, it's crying wolf.

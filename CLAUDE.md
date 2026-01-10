@@ -193,3 +193,33 @@ To add a new domain (e.g., "notifications"):
 - Unit tests focus on pattern loading, domain inference, and prompt building
 - No LLM mocking - actual API calls are integration tests (use sparingly)
 - Eval framework provides systematic A/B testing for quality assessment
+
+## Git Workflow
+
+**IMPORTANT: Always work on feature branches, never commit directly to main.**
+
+### Branch Naming Convention
+Use descriptive branch names with prefixes:
+- `feat/` - New features (e.g., `feat/eval-multiple-trials`)
+- `fix/` - Bug fixes (e.g., `fix/pattern-matching-edge-case`)
+- `refactor/` - Code refactoring (e.g., `refactor/simplify-eval-runner`)
+- `docs/` - Documentation (e.g., `docs/market-analysis`)
+- `chore/` - Maintenance tasks (e.g., `chore/update-dependencies`)
+
+### Workflow Steps
+1. **Before starting work**: Create a new branch from main
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout -b feat/your-feature-name
+   ```
+
+2. **During work**: Commit frequently with clear messages
+
+3. **After completing**: Push branch and create PR
+   ```bash
+   git push -u origin feat/your-feature-name
+   # Then create PR via GitHub
+   ```
+
+4. **Never**: Force push to main, commit directly to main, or skip PR review

@@ -1,0 +1,45 @@
+# Eval case: Static Config - Negative Test
+# Tests that Gremlin doesn't over-trigger on non-risky code changes
+
+name: negative-static-config
+description: Simple config file with constants - should NOT find risks
+
+input:
+  scope: "application configuration"
+  context: |
+    # config.py - Application constants
+
+    APP_NAME = "MyApp"
+    VERSION = "1.0.0"
+    DEBUG = False
+
+    # Display settings
+    PAGE_SIZE = 20
+    MAX_RESULTS = 100
+
+    # Timeouts in seconds
+    REQUEST_TIMEOUT = 30
+    CACHE_TTL = 3600
+
+    # Feature flags (static, not runtime)
+    ENABLE_DARK_MODE = True
+    ENABLE_ANALYTICS = False
+  depth: quick
+  threshold: 80
+
+expected:
+  # Maximum thresholds - this is just constants, no risks
+  max_critical: 0
+  max_high: 0
+  max_total: 2
+
+  categories: []
+  keywords: []
+  domains: []
+
+notes: |
+  NEGATIVE test case for static configuration.
+  This is just Python constants - no database, no auth, no network calls.
+  Gremlin should NOT find significant risks here.
+
+  Testing that the tool doesn't flag DEBUG=False or timeout values as "risks".
