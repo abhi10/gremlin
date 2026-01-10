@@ -130,6 +130,33 @@ User: gremlin review "checkout flow"
     └─────────────────┘
 ```
 
+## Gremlin Agent for Claude Code
+
+In addition to the CLI tool, Gremlin provides a Claude Code agent for code review:
+
+**Usage**: Invoke the Gremlin agent during code review sessions in Claude Code
+
+**Benefits**:
+- Line-specific risk identification in PRs
+- Code-focused patterns (database, concurrency, caching)
+- Automatic pattern matching during code review
+- Optional CLI integration for comprehensive analysis
+
+**Agent Patterns**: 45-50 code-review patterns optimized for:
+- Database queries and transactions
+- Concurrency and race conditions
+- Authentication and token handling
+- Caching and distributed systems
+- Background jobs and workers
+- Observability and monitoring
+
+**When to Use**:
+- CLI: Feature-scope analysis from PRD
+- Agent: Code review in Claude Code sessions
+- Both: Comprehensive coverage (recommended)
+
+See [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) for details.
+
 ## Development
 
 ```bash
