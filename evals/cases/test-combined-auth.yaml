@@ -1,0 +1,35 @@
+name: test-combined-auth
+description: Test CLI + Agent combined analysis on authentication
+mode: combined
+
+input:
+  scope: "JWT authentication middleware"
+  context: |
+    async function authenticateRequest(req, res, next) {
+      const token = req.headers.authorization?.split(' ')[1];
+
+      if (!token) {
+        return res.status(401).json({ error: 'No token' });
+      }
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = await db.users.findById(decoded.userId);
+        next();
+      } catch (error) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+    }
+  depth: quick
+  threshold: 70
+
+expected:
+  min_critical: 1
+  min_high: 2
+  min_total: 4
+  keywords:
+    - token
+    - auth
+    - jwt
+  categories:
+    - auth
