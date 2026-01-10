@@ -232,14 +232,21 @@ def run_agent_eval(case: EvalCase) -> str:
     This simulates the Gremlin agent's analysis by loading code-review patterns
     and applying them with Claude, matching the agent's behavior.
     """
-    # Load agent patterns from code-review.yaml
-    patterns_path = Path(__file__).parent.parent / "patterns" / "code-review.yaml"
-
+    # Reuse existing pattern loading infrastructure
     try:
-        with open(patterns_path) as f:
-            patterns = yaml.safe_load(f)
-    except FileNotFoundError:
-        return f"Error: code-review.yaml not found at {patterns_path}"
+        # Add parent directory to path to import gremlin modules
+        import sys
+        gremlin_path = Path(__file__).parent.parent
+        if str(gremlin_path) not in sys.path:
+            sys.path.insert(0, str(gremlin_path))
+
+        from gremlin.core.patterns import load_patterns
+
+        # Load agent patterns from code-review.yaml
+        patterns_path = gremlin_path / "patterns" / "code-review.yaml"
+        patterns = load_patterns(patterns_path)
+    except (ImportError, FileNotFoundError) as e:
+        return f"Error loading patterns: {e}"
 
     context = case.resolve_context() or ""
 

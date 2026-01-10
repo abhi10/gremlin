@@ -6,12 +6,16 @@ but can optionally leverage the CLI if installed.
 """
 
 import json
+import logging
+import shutil
 import subprocess
 from typing import Optional
 
+logger = logging.getLogger(__name__)
+
 
 def check_cli_available() -> bool:
-    """Check if gremlin CLI is installed.
+    """Check if gremlin CLI is installed (cross-platform).
 
     Returns:
         True if gremlin command is available, False otherwise
@@ -23,14 +27,15 @@ def check_cli_available() -> bool:
         ...     print("Gremlin CLI not found - agent will work standalone")
     """
     try:
-        result = subprocess.run(
-            ["which", "gremlin"],
-            capture_output=True,
-            timeout=5,
-            text=True
-        )
-        return result.returncode == 0
-    except Exception:
+        # Use shutil.which for cross-platform support (works on Windows too)
+        gremlin_path = shutil.which("gremlin")
+        if gremlin_path:
+            logger.debug(f"Gremlin CLI found at: {gremlin_path}")
+            return True
+        logger.debug("Gremlin CLI not found in PATH")
+        return False
+    except Exception as e:
+        logger.warning(f"Error checking for Gremlin CLI: {e}")
         return False
 
 
@@ -94,9 +99,25 @@ def analyze_with_cli(
             timeout=120
         )
 
-        if result.returncode == 0:
-            return json.loads(result.stdout)
-        return None
+        if result.returncode != 0:
+            logger.warning(f"Gremlin CLI failed with code {result.returncode}: {result.stderr}")
+            return None
 
-    except (subprocess.TimeoutExpired, json.JSONDecodeError, Exception):
+        # Parse and validate JSON response
+        try:
+            data = json.loads(result.stdout)
+            # Basic validation - CLI should return dict
+            if not isinstance(data, dict):
+                logger.warning(f"Gremlin CLI returned invalid JSON structure: {type(data)}")
+                return None
+            return data
+        except json.JSONDecodeError as e:
+            logger.warning(f"Gremlin CLI returned invalid JSON: {e}")
+            return None
+
+    except subprocess.TimeoutExpired:
+        logger.warning("Gremlin CLI timed out after 120 seconds")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error calling Gremlin CLI: {e}")
         return None

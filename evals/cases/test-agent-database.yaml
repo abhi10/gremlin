@@ -1,0 +1,26 @@
+name: test-agent-database
+description: Test agent's ability to find database risks in code
+mode: agent
+
+input:
+  scope: "database query handler"
+  context: |
+    def get_users_by_status(status):
+        users = []
+        for user_id in get_user_ids(status):
+            user = db.query(f"SELECT * FROM users WHERE id = {user_id}")
+            users.append(user)
+        return users
+  depth: quick
+  threshold: 70
+
+expected:
+  min_critical: 0
+  min_high: 1
+  min_total: 2
+  keywords:
+    - n+1
+    - query
+    - connection
+  categories:
+    - database
