@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Eval runner for comparing Gremlin vs raw Claude outputs."""
+"""Eval runner for comparing Gremlin vs baseline LLM outputs.
+
+Supports multiple LLM providers for cross-model evaluation.
+"""
 
 import json
 import re
@@ -14,6 +17,12 @@ import anthropic
 import yaml
 from rich.console import Console
 from rich.table import Table
+
+# Add parent to path to import gremlin modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from gremlin.llm.factory import get_provider
+from gremlin.llm.base import LLMConfig, LLMProviderError
 
 console = Console()
 
@@ -31,6 +40,11 @@ class EvalConfig:
 
     trials: int = 3  # Number of trials per case
     pass_threshold: float = 0.7  # Score threshold for pass/fail
+    # LLM provider configuration
+    provider: str = "anthropic"  # LLM provider (anthropic, openai, etc.)
+    model: str | None = None  # Model name (None = provider default)
+    baseline_provider: str | None = None  # Baseline provider (None = same as provider)
+    baseline_model: str | None = None  # Baseline model (None = provider default)
 
 
 @dataclass
@@ -237,8 +251,16 @@ def run_gremlin(case: EvalCase) -> str:
         return f"Error: {e}"
 
 
-def run_raw_claude(case: EvalCase) -> str:
-    """Run raw Claude without Gremlin patterns."""
+def run_baseline_llm(case: EvalCase, config: EvalConfig) -> str:
+    """Run baseline LLM without Gremlin patterns.
+
+    Args:
+        case: Eval case to run
+        config: Eval configuration with LLM provider settings
+
+    Returns:
+        LLM response text
+    """
     context = case.resolve_context() or ""
 
     prompt = f"""Analyze this scope for risks: {case.scope}
@@ -254,35 +276,41 @@ For each risk scenario:
 Focus on non-obvious risks. Skip generic advice."""
 
     try:
-        client = anthropic.Anthropic()
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            messages=[{"role": "user", "content": prompt}],
+        # Get baseline provider (or use main provider if not specified)
+        provider_name = config.baseline_provider or config.provider
+        model_name = config.baseline_model or config.model
+
+        provider = get_provider(provider=provider_name, model=model_name)
+        response = provider.complete(
+            system_prompt="You are a code quality analyst focused on identifying risks.",
+            user_message=prompt,
         )
-        return response.content[0].text
+        return response.text
+    except LLMProviderError as e:
+        return f"Error: {e}"
     except Exception as e:
         return f"Error: {e}"
 
 
-def run_agent_eval(case: EvalCase) -> str:
+def run_agent_eval(case: EvalCase, config: EvalConfig) -> str:
     """Run agent-mode evaluation using code-review.yaml patterns.
 
     This simulates the Gremlin agent's analysis by loading code-review patterns
-    and applying them with Claude, matching the agent's behavior.
+    and applying them with the configured LLM provider.
+
+    Args:
+        case: Eval case to run
+        config: Eval configuration with LLM provider settings
+
+    Returns:
+        LLM response text
     """
     # Reuse existing pattern loading infrastructure
     try:
-        # Add parent directory to path to import gremlin modules
-        import sys
-        gremlin_path = Path(__file__).parent.parent
-        if str(gremlin_path) not in sys.path:
-            sys.path.insert(0, str(gremlin_path))
-
         from gremlin.core.patterns import load_patterns
 
         # Load agent patterns from code-review.yaml
-        patterns_path = gremlin_path / "patterns" / "code-review.yaml"
+        patterns_path = Path(__file__).parent.parent / "patterns" / "code-review.yaml"
         patterns = load_patterns(patterns_path)
     except (ImportError, FileNotFoundError) as e:
         return f"Error loading patterns: {e}"
@@ -327,25 +355,30 @@ Apply the code-review patterns above. For each risk scenario:
 Focus on code-level implementation risks."""
 
     try:
-        client = anthropic.Anthropic()
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
+        provider = get_provider(provider=config.provider, model=config.model)
+        response = provider.complete(
+            system_prompt=system_prompt,
+            user_message=user_prompt,
         )
-        return response.content[0].text
+        return response.text
+    except LLMProviderError as e:
+        return f"Error: {e}"
     except Exception as e:
         return f"Error: {e}"
 
 
-def run_combined_eval(case: EvalCase) -> tuple[str, str]:
+def run_combined_eval(case: EvalCase, config: EvalConfig) -> tuple[str, str]:
     """Run combined CLI + Agent evaluation.
 
-    Returns tuple of (cli_output, agent_output) which can be merged for analysis.
+    Args:
+        case: Eval case to run
+        config: Eval configuration with LLM provider settings
+
+    Returns:
+        Tuple of (cli_output, agent_output) which can be merged for analysis
     """
     cli_output = run_gremlin(case)
-    agent_output = run_agent_eval(case)
+    agent_output = run_agent_eval(case, config)
     return cli_output, agent_output
 
 
@@ -482,10 +515,10 @@ def run_eval(
         if case.mode == EvalMode.AGENT:
             # Agent-only mode
             console.print("[yellow]Running Agent (code-review patterns)...[/yellow]")
-            agent_output = run_agent_eval(case)
+            agent_output = run_agent_eval(case, config)
 
-            console.print("[yellow]Running raw Claude (baseline)...[/yellow]")
-            claude_output = run_raw_claude(case)
+            console.print("[yellow]Running baseline LLM...[/yellow]")
+            claude_output = run_baseline_llm(case, config)
 
             agent_eval = evaluate(agent_output, case.expected)
             claude_eval = evaluate(claude_output, case.expected)
@@ -510,7 +543,7 @@ def run_eval(
             cli_output = run_gremlin(case)
 
             console.print("[yellow]Running Agent (code patterns)...[/yellow]")
-            agent_output = run_agent_eval(case)
+            agent_output = run_agent_eval(case, config)
 
             cli_eval = evaluate(cli_output, case.expected)
             agent_eval = evaluate(agent_output, case.expected)
@@ -565,8 +598,8 @@ def run_eval(
             console.print("[yellow]Running Gremlin CLI...[/yellow]")
             gremlin_output = run_gremlin(case)
 
-            console.print("[yellow]Running raw Claude...[/yellow]")
-            claude_output = run_raw_claude(case)
+            console.print("[yellow]Running baseline LLM...[/yellow]")
+            claude_output = run_baseline_llm(case, config)
 
             gremlin_eval = evaluate(gremlin_output, case.expected)
             claude_eval = evaluate(claude_output, case.expected)
@@ -698,10 +731,34 @@ def main():
         default=0.7,
         help="Pass/fail score threshold (default: 0.7)",
     )
+    parser.add_argument(
+        "--provider",
+        default="anthropic",
+        help="LLM provider (default: anthropic)",
+    )
+    parser.add_argument(
+        "--model",
+        help="Model name (default: provider default)",
+    )
+    parser.add_argument(
+        "--baseline-provider",
+        help="Baseline provider (default: same as --provider)",
+    )
+    parser.add_argument(
+        "--baseline-model",
+        help="Baseline model (default: provider default)",
+    )
 
     args = parser.parse_args()
 
-    config = EvalConfig(trials=args.trials, pass_threshold=args.threshold)
+    config = EvalConfig(
+        trials=args.trials,
+        pass_threshold=args.threshold,
+        provider=args.provider,
+        model=args.model,
+        baseline_provider=args.baseline_provider,
+        baseline_model=args.baseline_model,
+    )
 
     if args.case:
         path = Path(args.case)
