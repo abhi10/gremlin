@@ -7,6 +7,7 @@ import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 
 import anthropic
@@ -15,6 +16,13 @@ from rich.console import Console
 from rich.table import Table
 
 console = Console()
+
+
+class EvalMode(Enum):
+    """Evaluation mode."""
+    CLI = "cli"
+    AGENT = "agent"
+    COMBINED = "combined"
 
 
 @dataclass
@@ -99,6 +107,7 @@ class EvalCase:
     depth: str
     threshold: int
     expected: ExpectedCriteria
+    mode: EvalMode = EvalMode.CLI
 
     @classmethod
     def from_yaml(cls, path: Path) -> "EvalCase":
@@ -106,6 +115,9 @@ class EvalCase:
             data = yaml.safe_load(f)
 
         inp = data.get("input", {})
+        mode_str = data.get("mode", "cli").lower()
+        mode = EvalMode[mode_str.upper()] if mode_str.upper() in EvalMode.__members__ else EvalMode.CLI
+
         return cls(
             name=data.get("name", path.stem),
             description=data.get("description", ""),
@@ -115,6 +127,7 @@ class EvalCase:
             depth=inp.get("depth", "quick"),
             threshold=inp.get("threshold", 80),
             expected=ExpectedCriteria.from_dict(data.get("expected", {})),
+            mode=mode,
         )
 
     def resolve_context(self) -> str | None:
@@ -213,6 +226,80 @@ Focus on non-obvious risks. Skip generic advice."""
         return f"Error: {e}"
 
 
+def run_agent_eval(case: EvalCase) -> str:
+    """Run agent-mode evaluation using code-review.yaml patterns.
+
+    This simulates the Gremlin agent's analysis by loading code-review patterns
+    and applying them with Claude, matching the agent's behavior.
+    """
+    # Load agent patterns from code-review.yaml
+    patterns_path = Path(__file__).parent.parent / "patterns" / "code-review.yaml"
+
+    try:
+        with open(patterns_path) as f:
+            patterns = yaml.safe_load(f)
+    except FileNotFoundError:
+        return f"Error: code-review.yaml not found at {patterns_path}"
+
+    context = case.resolve_context() or ""
+
+    # Build agent prompt with code-review patterns
+    patterns_yaml = yaml.dump(patterns, default_flow_style=False)
+
+    system_prompt = f"""You are Gremlin, a risk-focused code reviewer.
+
+Surface non-obvious risks from real incidents, not theoretical vulnerabilities.
+
+## Code-Review Patterns
+
+{patterns_yaml}
+
+## Response Approach
+1. Identify domains touched by code
+2. Match patterns from catalog above
+3. Score confidence (0-100) and severity (1-5)
+4. Filter below threshold ({case.threshold})
+5. Report with "What if?" framing
+"""
+
+    user_prompt = f"""Analyze this code/scope for risks: {case.scope}
+
+{f"Context/Code:\n{context}" if context else ""}
+
+Depth: {case.depth}
+Confidence threshold: Only include scenarios where you're >{case.threshold}% confident.
+
+Apply the code-review patterns above. For each risk scenario:
+1. State the "what if?" question
+2. Explain the potential impact
+3. Rate severity (critical/high/medium/low)
+4. Provide your confidence percentage
+
+Focus on code-level implementation risks."""
+
+    try:
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}],
+        )
+        return response.content[0].text
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def run_combined_eval(case: EvalCase) -> tuple[str, str]:
+    """Run combined CLI + Agent evaluation.
+
+    Returns tuple of (cli_output, agent_output) which can be merged for analysis.
+    """
+    cli_output = run_gremlin(case)
+    agent_output = run_agent_eval(case)
+    return cli_output, agent_output
+
+
 def display_results(case: EvalCase, gremlin: EvalResult, claude: EvalResult) -> None:
     """Display comparison table."""
     table = Table(title=f"Results: {case.name}")
@@ -260,30 +347,100 @@ def determine_winner(gremlin: EvalResult, claude: EvalResult) -> str:
 
 
 def run_eval(case_path: Path, save: bool = True) -> dict:
-    """Run a single eval case."""
+    """Run a single eval case with mode support."""
     case = EvalCase.from_yaml(case_path)
 
     console.print(f"\n[bold cyan]Running eval:[/bold cyan] {case.name}")
-    console.print(f"[dim]{case.description}[/dim]\n")
+    console.print(f"[dim]{case.description}[/dim]")
+    console.print(f"[dim]Mode: {case.mode.value}[/dim]\n")
 
-    console.print("[yellow]Running Gremlin...[/yellow]")
-    gremlin_output = run_gremlin(case)
+    if case.mode == EvalMode.AGENT:
+        # Agent-only mode
+        console.print("[yellow]Running Agent (code-review patterns)...[/yellow]")
+        agent_output = run_agent_eval(case)
 
-    console.print("[yellow]Running raw Claude...[/yellow]")
-    claude_output = run_raw_claude(case)
+        console.print("[yellow]Running raw Claude (baseline)...[/yellow]")
+        claude_output = run_raw_claude(case)
 
-    gremlin_eval = evaluate(gremlin_output, case.expected)
-    claude_eval = evaluate(claude_output, case.expected)
+        agent_eval = evaluate(agent_output, case.expected)
+        claude_eval = evaluate(claude_output, case.expected)
 
-    display_results(case, gremlin_eval, claude_eval)
+        display_results(case, agent_eval, claude_eval)
 
-    result = {
-        "case": case.name,
-        "timestamp": datetime.now().isoformat(),
-        "gremlin": {"output": gremlin_output, "score": gremlin_eval.score},
-        "claude": {"output": claude_output, "score": claude_eval.score},
-        "winner": determine_winner(gremlin_eval, claude_eval),
-    }
+        result = {
+            "case": case.name,
+            "mode": case.mode.value,
+            "timestamp": datetime.now().isoformat(),
+            "agent": {"output": agent_output, "score": agent_eval.score},
+            "claude": {"output": claude_output, "score": claude_eval.score},
+            "winner": determine_winner(agent_eval, claude_eval),
+        }
+
+    elif case.mode == EvalMode.COMBINED:
+        # Combined CLI + Agent mode
+        console.print("[yellow]Running Gremlin CLI (feature patterns)...[/yellow]")
+        cli_output = run_gremlin(case)
+
+        console.print("[yellow]Running Agent (code patterns)...[/yellow]")
+        agent_output = run_agent_eval(case)
+
+        cli_eval = evaluate(cli_output, case.expected)
+        agent_eval = evaluate(agent_output, case.expected)
+
+        # Combine outputs for evaluation
+        combined_output = f"=== CLI Analysis ===\n{cli_output}\n\n=== Agent Analysis ===\n{agent_output}"
+        combined_eval = evaluate(combined_output, case.expected)
+
+        # Display 3-way comparison
+        table = Table(title=f"Results: {case.name}")
+        table.add_column("Metric", style="cyan")
+        table.add_column("CLI", style="green")
+        table.add_column("Agent", style="blue")
+        table.add_column("Combined", style="magenta")
+
+        cm, am, compm = cli_eval.metrics, agent_eval.metrics, combined_eval.metrics
+        rows = [
+            ("Critical", cm.critical, am.critical, compm.critical),
+            ("High", cm.high, am.high, compm.high),
+            ("Total Risks", cm.total_risks, am.total_risks, compm.total_risks),
+            ("Score", f"{cli_eval.score:.0%}", f"{agent_eval.score:.0%}", f"{combined_eval.score:.0%}"),
+        ]
+
+        for row in rows:
+            table.add_row(row[0], str(row[1]), str(row[2]), str(row[3]))
+
+        console.print(table)
+
+        result = {
+            "case": case.name,
+            "mode": case.mode.value,
+            "timestamp": datetime.now().isoformat(),
+            "cli": {"output": cli_output, "score": cli_eval.score},
+            "agent": {"output": agent_output, "score": agent_eval.score},
+            "combined": {"output": combined_output, "score": combined_eval.score},
+        }
+
+    else:
+        # CLI mode (default/original behavior)
+        console.print("[yellow]Running Gremlin CLI...[/yellow]")
+        gremlin_output = run_gremlin(case)
+
+        console.print("[yellow]Running raw Claude...[/yellow]")
+        claude_output = run_raw_claude(case)
+
+        gremlin_eval = evaluate(gremlin_output, case.expected)
+        claude_eval = evaluate(claude_output, case.expected)
+
+        display_results(case, gremlin_eval, claude_eval)
+
+        result = {
+            "case": case.name,
+            "mode": case.mode.value,
+            "timestamp": datetime.now().isoformat(),
+            "gremlin": {"output": gremlin_output, "score": gremlin_eval.score},
+            "claude": {"output": claude_output, "score": claude_eval.score},
+            "winner": determine_winner(gremlin_eval, claude_eval),
+        }
 
     if save:
         results_dir = Path(__file__).parent / "results"
