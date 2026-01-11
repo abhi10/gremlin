@@ -14,7 +14,6 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 
-import anthropic
 import yaml
 from rich.console import Console
 from rich.table import Table
@@ -22,8 +21,8 @@ from rich.table import Table
 # Add parent to path to import gremlin modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from gremlin.llm.base import LLMProviderError
 from gremlin.llm.factory import get_provider
-from gremlin.llm.base import LLMConfig, LLMProviderError
 
 console = Console()
 

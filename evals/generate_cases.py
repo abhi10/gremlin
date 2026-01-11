@@ -46,16 +46,12 @@ def generate_case(
         with open(metadata_file) as f:
             metadata = json.load(f)
 
-        # Load code
-        code = fixture_file.read_text()
-
         # Extract info
         domain = metadata.get("domain", "unknown")
         repo_name = metadata.get("repo", "unknown")
         file_path = metadata.get("file_path", "unknown")
         url = metadata.get("url", "")
         stars = metadata.get("stars", 0)
-        language = metadata.get("language", "unknown")
 
         # Create case name from fixture filename
         case_name = fixture_file.stem
@@ -149,7 +145,10 @@ def generate_all_cases(
         console.print(f"[yellow]No fixtures found in {fixtures_dir}[/yellow]")
         return 0
 
-    console.print(f"\n[bold cyan]Generating eval cases from {len(fixture_files)} fixtures[/bold cyan]\n")
+    console.print(
+        f"\n[bold cyan]Generating eval cases from {len(fixture_files)} "
+        f"fixtures[/bold cyan]\n"
+    )
 
     generated = 0
     skipped = 0
@@ -189,7 +188,7 @@ def generate_all_cases(
         else:
             skipped += 1
 
-    console.print(f"\n[bold]Summary:[/bold]")
+    console.print("\n[bold]Summary:[/bold]")
     console.print(f"  Generated: {generated}")
     console.print(f"  Skipped: {skipped}")
     console.print(f"  Total: {len(fixture_files)}")

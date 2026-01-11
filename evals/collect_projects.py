@@ -23,7 +23,6 @@ import sys
 from pathlib import Path
 
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
 # Add parent to path to import evals modules
@@ -90,7 +89,10 @@ def collect_projects(
     results = {}
     total_collected = 0
 
-    console.print(f"\n[bold cyan]Collecting {total_limit} projects across {len(domains)} domains[/bold cyan]\n")
+    console.print(
+        f"\n[bold cyan]Collecting {total_limit} projects "
+        f"across {len(domains)} domains[/bold cyan]\n"
+    )
 
     for domain in domains:
         if total_collected >= total_limit:
@@ -107,7 +109,10 @@ def collect_projects(
         remaining = total_limit - total_collected
         samples_to_collect = min(samples_per_domain, remaining)
 
-        console.print(f"[bold]Collecting {samples_to_collect} samples for [cyan]{domain.value}[/cyan]...[/bold]")
+        console.print(
+            f"[bold]Collecting {samples_to_collect} samples for "
+            f"[cyan]{domain.value}[/cyan]...[/bold]"
+        )
 
         # Collect samples
         try:
@@ -151,7 +156,7 @@ def display_summary(results: dict[Domain, int]) -> None:
 
     if total > 0:
         console.print(f"\n[green]✓ Successfully collected {total} code samples[/green]")
-        console.print(f"[dim]Saved to: evals/fixtures/[/dim]")
+        console.print("[dim]Saved to: evals/fixtures/[/dim]")
     else:
         console.print("\n[red]✗ No samples collected[/red]")
 

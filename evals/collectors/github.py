@@ -10,17 +10,11 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
-from urllib.error import HTTPError, URLError
 
-from evals.collectors.filters import (
-    Domain,
-    DomainFilter,
-    QualityFilter,
-    filter_by_domain,
-    filter_by_quality,
-)
+from evals.collectors.filters import Domain, DomainFilter, QualityFilter
 
 
 @dataclass
@@ -248,7 +242,11 @@ class GitHubCollector:
 
                         # Check if file matches
                         filename = Path(path).name.lower()
-                        if any(filename.startswith(prefix) and filename.endswith(f".{ext}") for ext in extensions):
+                        if any(
+                            filename.startswith(prefix)
+                            and filename.endswith(f".{ext}")
+                            for ext in extensions
+                        ):
                             matching_files.append({
                                 "path": path,
                                 "sha": item["sha"],
