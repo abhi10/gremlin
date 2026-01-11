@@ -9,6 +9,8 @@ universal:
       - "What if input exceeds expected length?"
       - "What if input contains special characters or unicode?"
       - "What if input type doesn't match expectation?"
+      - "What if parsed JSON/data contains unexpected types (object instead of string, null instead of array)? [Runtime crashes, type errors break critical flows]"
+      - "What if regex with nested quantifiers (.+, .*) processes crafted input causing exponential backtracking? [HIGH - CPU exhaustion, application freeze, DoS]"
 
   - category: Concurrency
     patterns:
@@ -30,6 +32,7 @@ universal:
       - "What if the external API returns unexpected schema?"
       - "What if the external API rate limits us?"
       - "What if external API is deprecated without notice?"
+      - "What if HTTP/database operations have no timeout and server never responds? [Resource hanging, connection pool exhaustion over time]"
 
   - category: Error Paths
     patterns:
@@ -41,7 +44,7 @@ universal:
   - category: Resource Limits
     patterns:
       - "What if disk fills up on database or temp directory?"
-      - "What if memory is exhausted during concurrent operations?"
+      - "What if memory exhausted processing unbounded data (large files, API responses, diffs)? [CRITICAL - OOM crash, DoS affecting all users]"
       - "What if N+1 queries cause connection pool exhaustion under load?"
       - "What if long-running operations hold DB connections open?"
 
@@ -141,10 +144,12 @@ domain_specific:
       - "What if external API is deprecated without notice?"
 
   security:
-    keywords: [xss, injection, sanitize, escape, vulnerability, security, attack, validate, toctou]
+    keywords: [xss, injection, sanitize, escape, vulnerability, security, attack, validate, toctou, ssrf, url]
     patterns:
       - "What if user input in metadata field contains XSS payload?"
       - "What if file/path state changes between validation and use (TOCTOU race)? [Bypasses security boundaries via symlink attacks]"
+      - "What if user-controlled URLs target internal services (localhost, 169.254.169.254, private IPs)? [CRITICAL - SSRF enabling internal network scanning, cloud metadata theft]"
+      - "What if test suite validates request structure but never tests authentication/authorization requirements? [CRITICAL - security vulnerabilities ship to production undetected]"
 
   frontend:
     keywords: [ui, browser, mobile, desktop, resize, layout, css, react, vue, javascript, js]
@@ -160,4 +165,3 @@ domain_specific:
     patterns:
       - "What if search index is out of sync with database?"
       - "What if user searches while reindex is running?"
-      - "What if search query triggers regex catastrophic backtracking?"
