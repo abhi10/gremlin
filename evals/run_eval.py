@@ -8,6 +8,7 @@ import json
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -669,31 +670,58 @@ def run_eval(
 
 
 def run_all(
-    cases_dir: Path | None = None, config: EvalConfig | None = None
+    cases_dir: Path | None = None,
+    config: EvalConfig | None = None,
+    parallel: bool = False,
+    max_workers: int = 5,
 ) -> list[dict]:
     """Run all eval cases with multiple trials.
 
     Args:
         cases_dir: Directory containing eval case YAML files
         config: Eval configuration (trials, threshold)
+        parallel: If True, run cases in parallel
+        max_workers: Max parallel workers (default: 5)
 
     Returns:
         List of result dicts for each case
     """
     config = config or EvalConfig()
     cases_dir = cases_dir or Path(__file__).parent / "cases"
-    case_files = sorted(cases_dir.glob("*.yaml"))
+    # Search recursively to include subdirectories like real-world/
+    case_files = sorted(cases_dir.glob("**/*.yaml"))
 
     console.print(f"[bold]Found {len(case_files)} eval cases[/bold]")
     threshold_pct = f"{config.pass_threshold:.0%}"
-    console.print(f"[dim]Config: {config.trials} trials, {threshold_pct} threshold[/dim]\n")
+    mode = f"parallel (max {max_workers} workers)" if parallel else "sequential"
+    console.print(f"[dim]Config: {config.trials} trials, {threshold_pct} threshold, {mode}[/dim]\n")
 
     results = []
-    for case_file in case_files:
-        try:
-            results.append(run_eval(case_file, config=config))
-        except Exception as e:
-            console.print(f"[red]Error running {case_file.name}: {e}[/red]")
+
+    if parallel:
+        # Parallel execution using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all cases
+            future_to_case = {
+                executor.submit(run_eval, case_file, config): case_file
+                for case_file in case_files
+            }
+
+            # Collect results as they complete
+            for future in as_completed(future_to_case):
+                case_file = future_to_case[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+                except Exception as e:
+                    console.print(f"[red]Error running {case_file.name}: {e}[/red]")
+    else:
+        # Sequential execution (original behavior)
+        for case_file in case_files:
+            try:
+                results.append(run_eval(case_file, config=config))
+            except Exception as e:
+                console.print(f"[red]Error running {case_file.name}: {e}[/red]")
 
     # Summary
     console.print("\n" + "=" * 50)
@@ -752,6 +780,17 @@ def main():
         "--baseline-model",
         help="Baseline model (default: provider default)",
     )
+    parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Run cases in parallel (faster)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=5,
+        help="Max parallel workers (default: 5)",
+    )
 
     args = parser.parse_args()
 
@@ -773,7 +812,7 @@ def main():
             sys.exit(1)
         run_eval(path, config=config, save=not args.no_save)
     elif args.all:
-        run_all(config=config)
+        run_all(config=config, parallel=args.parallel, max_workers=args.workers)
     else:
         parser.print_help()
 
