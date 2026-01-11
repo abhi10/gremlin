@@ -1,0 +1,19 @@
+name: deployment-simstudioai-sim-deployment-app-02
+description: "Real-world deployment code from simstudioai/sim (25246\u2B50). File:\
+  \ helm/sim/templates/deployment-app.yaml"
+source:
+  repo: simstudioai/sim
+  file: helm/sim/templates/deployment-app.yaml
+  url: https://github.com/simstudioai/sim/blob/HEAD/helm/sim/templates/deployment-app.yaml
+  stars: 25246
+  domain: deployment
+input:
+  scope: Deployment configuration
+  context_file: evals/fixtures/deployment-simstudioai-sim-deployment-app-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - deployment
+  keywords: []

@@ -1,0 +1,19 @@
+name: security-OpenCTI-Platform-opencti-securityPlatform-test-01
+description: "Real-world security code from OpenCTI-Platform/opencti (8091\u2B50).\
+  \ File: opencti-platform/opencti-graphql/tests/03-integration/02-resolvers/securityPlatform-test.js"
+source:
+  repo: OpenCTI-Platform/opencti
+  file: opencti-platform/opencti-graphql/tests/03-integration/02-resolvers/securityPlatform-test.js
+  url: https://github.com/OpenCTI-Platform/opencti/blob/HEAD/opencti-platform/opencti-graphql/tests/03-integration/02-resolvers/securityPlatform-test.js
+  stars: 8091
+  domain: security
+input:
+  scope: Security implementation
+  context_file: evals/fixtures/security-OpenCTI-Platform-opencti-securityPlatform-test-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - security
+  keywords: []

@@ -1,0 +1,18 @@
+name: frontend-vuejs-vue-monitor-02
+description: "Real-world frontend code from vuejs/vue (209829\u2B50). File: benchmarks/dbmon/lib/monitor.js"
+source:
+  repo: vuejs/vue
+  file: benchmarks/dbmon/lib/monitor.js
+  url: https://github.com/vuejs/vue/blob/HEAD/benchmarks/dbmon/lib/monitor.js
+  stars: 209829
+  domain: frontend
+input:
+  scope: Frontend component
+  context_file: evals/fixtures/frontend-vuejs-vue-monitor-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - frontend
+  keywords: []

@@ -9,7 +9,7 @@ source:
   domain: file-upload
 input:
   scope: File upload handler
-  context_file: ../fixtures/file-upload-valor-software-ng2-file-upload-file-catcher-02.txt
+  context_file: evals/fixtures/file-upload-valor-software-ng2-file-upload-file-catcher-02.txt
   depth: quick
   threshold: 70
 expected:

@@ -73,10 +73,20 @@ def generate_case(
             "database": "Database operations",
             "api": "API endpoint",
             "file-upload": "File upload handler",
+            "image-processing": "Image processing",
+            "deployment": "Deployment configuration",
+            "infrastructure": "Infrastructure management",
+            "dependencies": "Dependency management",
+            "security": "Security implementation",
+            "frontend": "Frontend component",
+            "search": "Search functionality",
         }
         scope = scope_map.get(domain, f"{domain} implementation")
 
         # Create eval case structure
+        # Use path relative to repo root (where evals are run from)
+        relative_fixture_path = f"evals/fixtures/{fixture_file.name}"
+
         case_data = {
             "name": case_name,
             "description": description,
@@ -89,7 +99,7 @@ def generate_case(
             },
             "input": {
                 "scope": scope,
-                "context_file": f"../fixtures/{fixture_file.name}",
+                "context_file": relative_fixture_path,
                 "depth": "quick",
                 "threshold": 70,
             },

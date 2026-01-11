@@ -1,0 +1,19 @@
+name: dependencies-kamranahmedse-driver.js-package-00
+description: "Real-world dependencies code from kamranahmedse/driver.js (25230\u2B50\
+  ). File: package.json"
+source:
+  repo: kamranahmedse/driver.js
+  file: package.json
+  url: https://github.com/kamranahmedse/driver.js/blob/HEAD/package.json
+  stars: 25230
+  domain: dependencies
+input:
+  scope: Dependency management
+  context_file: evals/fixtures/dependencies-kamranahmedse-driver.js-package-00.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - dependencies
+  keywords: []

@@ -1,0 +1,16 @@
+{
+  "repo": "vuejs/vue",
+  "file_path": "benchmarks/dbmon/lib/memory-stats.js",
+  "url": "https://github.com/vuejs/vue/blob/HEAD/benchmarks/dbmon/lib/memory-stats.js",
+  "domain": "frontend",
+  "language": "TypeScript",
+  "stars": 209829,
+  "repo_description": "This is the repo for Vue 2. For Vue 3, go to https://github.com/vuejs/core",
+  "repo_topics": [
+    "framework",
+    "frontend",
+    "javascript",
+    "vue"
+  ],
+  "file_size": 2989
+}

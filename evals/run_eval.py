@@ -236,7 +236,11 @@ def evaluate(output: str, expected: ExpectedCriteria) -> EvalResult:
 
 def run_gremlin(case: EvalCase) -> str:
     """Run Gremlin CLI and return output."""
-    cmd = ["gremlin", "review", case.scope, "--output", "json",
+    # Use sys.executable to find gremlin in the same Python environment
+    import sys
+    gremlin_path = Path(sys.executable).parent / "gremlin"
+    # Use markdown output since json isn't implemented yet
+    cmd = [str(gremlin_path), "review", case.scope, "--output", "md",
            "--depth", case.depth, "--threshold", str(case.threshold)]
 
     if case.context_file:

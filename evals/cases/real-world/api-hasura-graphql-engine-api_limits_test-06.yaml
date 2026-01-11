@@ -9,7 +9,7 @@ source:
   domain: api
 input:
   scope: API endpoint
-  context_file: ../fixtures/api-hasura-graphql-engine-api_limits_test-06.txt
+  context_file: evals/fixtures/api-hasura-graphql-engine-api_limits_test-06.txt
   depth: quick
   threshold: 70
 expected:

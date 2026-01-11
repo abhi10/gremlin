@@ -1,0 +1,19 @@
+{
+  "repo": "OpenCTI-Platform/opencti",
+  "file_path": "opencti-platform/opencti-graphql/tests/03-integration/02-resolvers/securityPlatform-test.js",
+  "url": "https://github.com/OpenCTI-Platform/opencti/blob/HEAD/opencti-platform/opencti-graphql/tests/03-integration/02-resolvers/securityPlatform-test.js",
+  "domain": "security",
+  "language": "TypeScript",
+  "stars": 8091,
+  "repo_description": "Open Cyber Threat Intelligence Platform",
+  "repo_topics": [
+    "cti",
+    "cyber",
+    "cybersecurity",
+    "intelligence",
+    "osint",
+    "security",
+    "threat-intelligence"
+  ],
+  "file_size": 5424
+}

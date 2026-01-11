@@ -1,0 +1,30 @@
+{
+  "repo": "simstudioai/sim",
+  "file_path": "helm/sim/templates/deployment-app.yaml",
+  "url": "https://github.com/simstudioai/sim/blob/HEAD/helm/sim/templates/deployment-app.yaml",
+  "domain": "deployment",
+  "language": "TypeScript",
+  "stars": 25246,
+  "repo_description": "Open-source platform to build and deploy AI agent workflows.",
+  "repo_topics": [
+    "agent-workflow",
+    "agentic-workflow",
+    "agents",
+    "ai",
+    "aiagents",
+    "anthropic",
+    "artificial-intelligence",
+    "automation",
+    "chatbot",
+    "deepseek",
+    "gemini",
+    "low-code",
+    "nextjs",
+    "no-code",
+    "openai",
+    "rag",
+    "react",
+    "typescript"
+  ],
+  "file_size": 4866
+}

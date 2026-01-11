@@ -8,7 +8,7 @@ source:
   domain: api
 input:
   scope: API endpoint
-  context_file: ../fixtures/api-appsmithorg-appsmith-API_Pane_spec-02.txt
+  context_file: evals/fixtures/api-appsmithorg-appsmith-API_Pane_spec-02.txt
   depth: quick
   threshold: 70
 expected:

@@ -9,7 +9,7 @@ source:
   domain: payments
 input:
   scope: Payment processing
-  context_file: ../fixtures/payments-stripe-stripe-node-PaymentIntents.spec-00.txt
+  context_file: evals/fixtures/payments-stripe-stripe-node-PaymentIntents.spec-00.txt
   depth: quick
   threshold: 70
 expected:

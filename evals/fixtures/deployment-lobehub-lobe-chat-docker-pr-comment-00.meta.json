@@ -1,0 +1,29 @@
+{
+  "repo": "lobehub/lobe-chat",
+  "file_path": ".github/scripts/docker-pr-comment.js",
+  "url": "https://github.com/lobehub/lobe-chat/blob/HEAD/.github/scripts/docker-pr-comment.js",
+  "domain": "deployment",
+  "language": "TypeScript",
+  "stars": 69986,
+  "repo_description": "\ud83e\udd2f LobeHub - an open-source, modern design AI Agent Workspace. Supports multiple AI providers, Knowledge Base (file upload / RAG ), one click install MCP Marketplace and Artifacts / Thinking. One-click FREE deployment of your private AI Agent application.",
+  "repo_topics": [
+    "agent",
+    "ai",
+    "artifacts",
+    "chat",
+    "chatgpt",
+    "claude",
+    "deepseek",
+    "deepseek-r1",
+    "function-calling",
+    "gemini",
+    "gpt",
+    "knowledge-base",
+    "mcp",
+    "nextjs",
+    "ollama",
+    "openai",
+    "rag"
+  ],
+  "file_size": 2331
+}

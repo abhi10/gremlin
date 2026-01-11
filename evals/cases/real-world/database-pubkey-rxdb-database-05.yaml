@@ -8,7 +8,7 @@ source:
   domain: database
 input:
   scope: Database operations
-  context_file: ../fixtures/database-pubkey-rxdb-database-05.txt
+  context_file: evals/fixtures/database-pubkey-rxdb-database-05.txt
   depth: quick
   threshold: 70
 expected:

@@ -8,7 +8,7 @@ source:
   domain: auth
 input:
   scope: Authentication system
-  context_file: ../fixtures/auth-nhost-nhost-auth_test-01.txt
+  context_file: evals/fixtures/auth-nhost-nhost-auth_test-01.txt
   depth: quick
   threshold: 70
 expected:

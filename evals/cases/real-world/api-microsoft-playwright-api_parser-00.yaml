@@ -8,7 +8,7 @@ source:
   domain: api
 input:
   scope: API endpoint
-  context_file: ../fixtures/api-microsoft-playwright-api_parser-00.txt
+  context_file: evals/fixtures/api-microsoft-playwright-api_parser-00.txt
   depth: quick
   threshold: 70
 expected:

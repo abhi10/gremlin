@@ -60,13 +60,20 @@ def collect_projects(
         output_dir = Path(__file__).parent / "fixtures"
 
     if domains is None:
-        # Default: collect from key domains
+        # Default: collect from ALL domains to validate full pattern library
         domains = [
             Domain.AUTH,
             Domain.PAYMENTS,
             Domain.DATABASE,
             Domain.API,
             Domain.FILE_UPLOAD,
+            Domain.IMAGE_PROCESSING,
+            Domain.DEPLOYMENT,
+            Domain.INFRASTRUCTURE,
+            Domain.DEPENDENCIES,
+            Domain.SECURITY,
+            Domain.FRONTEND,
+            Domain.SEARCH,
         ]
 
     # Initialize collector

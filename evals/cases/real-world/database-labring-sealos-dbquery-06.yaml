@@ -8,7 +8,7 @@ source:
   domain: database
 input:
   scope: Database operations
-  context_file: ../fixtures/database-labring-sealos-dbquery-06.txt
+  context_file: evals/fixtures/database-labring-sealos-dbquery-06.txt
   depth: quick
   threshold: 70
 expected:

@@ -16,13 +16,13 @@ class Domain(str, Enum):
     DATABASE = "database"
     API = "api"
     FILE_UPLOAD = "file-upload"
+    IMAGE_PROCESSING = "image-processing"
     DEPLOYMENT = "deployment"
-    ECOMMERCE = "ecommerce"
-    HEALTHCARE = "healthcare"
-    FINTECH = "fintech"
-    CONCURRENCY = "concurrency"
+    INFRASTRUCTURE = "infrastructure"
+    DEPENDENCIES = "dependencies"
     SECURITY = "security"
-    UNIVERSAL = "universal"
+    FRONTEND = "frontend"
+    SEARCH = "search"
 
 
 @dataclass
@@ -117,11 +117,74 @@ DOMAIN_FILTERS: dict[Domain, DomainFilter] = {
     ),
     Domain.FILE_UPLOAD: DomainFilter(
         domain=Domain.FILE_UPLOAD,
-        keywords=["upload", "file-upload", "s3", "storage", "image-processing"],
+        keywords=["upload", "file-upload", "s3", "storage", "multipart"],
         file_patterns=[
             "**/upload*.{ts,js,py,go,java}",
             "**/storage*.{ts,js,py,go,java}",
             "**/file*.{ts,js,py,go,java}",
+        ],
+    ),
+    Domain.IMAGE_PROCESSING: DomainFilter(
+        domain=Domain.IMAGE_PROCESSING,
+        keywords=["image", "resize", "thumbnail", "pillow", "sharp"],
+        file_patterns=[
+            "**/image*.{ts,js,py,go,java}",
+            "**/thumbnail*.{ts,js,py,go,java}",
+            "**/resize*.{ts,js,py,go,java}",
+        ],
+    ),
+    Domain.DEPLOYMENT: DomainFilter(
+        domain=Domain.DEPLOYMENT,
+        keywords=["deploy", "docker", "kubernetes", "k8s", "container"],
+        file_patterns=[
+            "**/deploy*.{ts,js,py,go,java,yaml,yml}",
+            "**/docker*.{ts,js,py,go,java}",
+            "**/k8s*.{ts,js,py,go,java,yaml,yml}",
+        ],
+    ),
+    Domain.INFRASTRUCTURE: DomainFilter(
+        domain=Domain.INFRASTRUCTURE,
+        keywords=["server", "infrastructure", "cert", "ssl", "tls"],
+        file_patterns=[
+            "**/server*.{ts,js,py,go,java}",
+            "**/cert*.{ts,js,py,go,java}",
+            "**/ssl*.{ts,js,py,go,java}",
+        ],
+    ),
+    Domain.DEPENDENCIES: DomainFilter(
+        domain=Domain.DEPENDENCIES,
+        keywords=["dependency", "package", "version", "upgrade", "npm"],
+        file_patterns=[
+            "**/package*.{ts,js,py,go,java,json}",
+            "**/dependency*.{ts,js,py,go,java}",
+            "**/version*.{ts,js,py,go,java}",
+        ],
+    ),
+    Domain.SECURITY: DomainFilter(
+        domain=Domain.SECURITY,
+        keywords=["security", "xss", "injection", "sanitize", "vulnerability"],
+        file_patterns=[
+            "**/security*.{ts,js,py,go,java}",
+            "**/sanitize*.{ts,js,py,go,java}",
+            "**/validate*.{ts,js,py,go,java}",
+        ],
+    ),
+    Domain.FRONTEND: DomainFilter(
+        domain=Domain.FRONTEND,
+        keywords=["frontend", "react", "vue", "ui", "component"],
+        file_patterns=[
+            "**/component*.{ts,js,tsx,jsx}",
+            "**/ui*.{ts,js,tsx,jsx}",
+            "**/*Component.{ts,js,tsx,jsx}",
+        ],
+    ),
+    Domain.SEARCH: DomainFilter(
+        domain=Domain.SEARCH,
+        keywords=["search", "elasticsearch", "algolia", "index", "query"],
+        file_patterns=[
+            "**/search*.{ts,js,py,go,java}",
+            "**/index*.{ts,js,py,go,java}",
+            "**/query*.{ts,js,py,go,java}",
         ],
     ),
 }

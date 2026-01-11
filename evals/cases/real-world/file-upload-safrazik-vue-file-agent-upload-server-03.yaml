@@ -9,7 +9,7 @@ source:
   domain: file-upload
 input:
   scope: File upload handler
-  context_file: ../fixtures/file-upload-safrazik-vue-file-agent-upload-server-03.txt
+  context_file: evals/fixtures/file-upload-safrazik-vue-file-agent-upload-server-03.txt
   depth: quick
   threshold: 70
 expected:

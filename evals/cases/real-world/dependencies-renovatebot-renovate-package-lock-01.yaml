@@ -1,0 +1,19 @@
+name: dependencies-renovatebot-renovate-package-lock-01
+description: "Real-world dependencies code from renovatebot/renovate (20540\u2B50\
+  ). File: lib/modules/manager/npm/__fixtures__/npm7/package-lock.json"
+source:
+  repo: renovatebot/renovate
+  file: lib/modules/manager/npm/__fixtures__/npm7/package-lock.json
+  url: https://github.com/renovatebot/renovate/blob/HEAD/lib/modules/manager/npm/__fixtures__/npm7/package-lock.json
+  stars: 20540
+  domain: dependencies
+input:
+  scope: Dependency management
+  context_file: evals/fixtures/dependencies-renovatebot-renovate-package-lock-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - dependencies
+  keywords: []

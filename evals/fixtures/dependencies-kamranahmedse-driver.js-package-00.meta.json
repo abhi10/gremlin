@@ -1,0 +1,22 @@
+{
+  "repo": "kamranahmedse/driver.js",
+  "file_path": "package.json",
+  "url": "https://github.com/kamranahmedse/driver.js/blob/HEAD/package.json",
+  "domain": "dependencies",
+  "language": "TypeScript",
+  "stars": 25230,
+  "repo_description": "A lightweight, dependency-free JavaScript library for guiding user focus across the page.",
+  "repo_topics": [
+    "feature-introductions",
+    "overlay",
+    "overlays",
+    "popover",
+    "product-tour",
+    "product-tours",
+    "spotlight",
+    "tour",
+    "user-onboarding",
+    "walkthrough"
+  ],
+  "file_size": 1644
+}
