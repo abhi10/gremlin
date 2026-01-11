@@ -1,0 +1,19 @@
+name: dependencies-flatpickr-flatpickr-package-02
+description: "Real-world dependencies code from flatpickr/flatpickr (16444\u2B50).\
+  \ File: package.json"
+source:
+  repo: flatpickr/flatpickr
+  file: package.json
+  url: https://github.com/flatpickr/flatpickr/blob/HEAD/package.json
+  stars: 16444
+  domain: dependencies
+input:
+  scope: Dependency management
+  context_file: evals/fixtures/dependencies-flatpickr-flatpickr-package-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - dependencies
+  keywords: []

@@ -1,0 +1,18 @@
+name: api-microsoft-playwright-api_parser-00
+description: "Real-world api code from microsoft/playwright (81020\u2B50). File: utils/doclint/api_parser.js"
+source:
+  repo: microsoft/playwright
+  file: utils/doclint/api_parser.js
+  url: https://github.com/microsoft/playwright/blob/HEAD/utils/doclint/api_parser.js
+  stars: 81020
+  domain: api
+input:
+  scope: API endpoint
+  context_file: evals/fixtures/api-microsoft-playwright-api_parser-00.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - api
+  keywords: []

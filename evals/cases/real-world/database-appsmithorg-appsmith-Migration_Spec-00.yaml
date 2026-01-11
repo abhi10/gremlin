@@ -1,0 +1,19 @@
+name: database-appsmithorg-appsmith-Migration_Spec-00
+description: "Real-world database code from appsmithorg/appsmith (38868\u2B50). File:\
+  \ app/client/cypress/e2e/Regression/ClientSide/Widgets/Migration_Spec.js"
+source:
+  repo: appsmithorg/appsmith
+  file: app/client/cypress/e2e/Regression/ClientSide/Widgets/Migration_Spec.js
+  url: https://github.com/appsmithorg/appsmith/blob/HEAD/app/client/cypress/e2e/Regression/ClientSide/Widgets/Migration_Spec.js
+  stars: 38868
+  domain: database
+input:
+  scope: Database operations
+  context_file: evals/fixtures/database-appsmithorg-appsmith-Migration_Spec-00.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - database
+  keywords: []

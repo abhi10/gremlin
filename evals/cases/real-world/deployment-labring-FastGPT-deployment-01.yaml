@@ -1,0 +1,19 @@
+name: deployment-labring-FastGPT-deployment-01
+description: "Real-world deployment code from labring/FastGPT (26834\u2B50). File:\
+  \ deploy/helm/fastgpt/templates/deployment.yaml"
+source:
+  repo: labring/FastGPT
+  file: deploy/helm/fastgpt/templates/deployment.yaml
+  url: https://github.com/labring/FastGPT/blob/HEAD/deploy/helm/fastgpt/templates/deployment.yaml
+  stars: 26834
+  domain: deployment
+input:
+  scope: Deployment configuration
+  context_file: evals/fixtures/deployment-labring-FastGPT-deployment-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - deployment
+  keywords: []

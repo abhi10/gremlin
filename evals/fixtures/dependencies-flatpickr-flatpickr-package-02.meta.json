@@ -1,0 +1,19 @@
+{
+  "repo": "flatpickr/flatpickr",
+  "file_path": "package.json",
+  "url": "https://github.com/flatpickr/flatpickr/blob/HEAD/package.json",
+  "domain": "dependencies",
+  "language": "TypeScript",
+  "stars": 16444,
+  "repo_description": "lightweight, powerful javascript datetimepicker with no dependencies",
+  "repo_topics": [
+    "date",
+    "datepicker",
+    "daterange",
+    "daterangepicker",
+    "datetime",
+    "datetime-picker",
+    "timepicker"
+  ],
+  "file_size": 2659
+}

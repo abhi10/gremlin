@@ -1,0 +1,19 @@
+name: payments-stripe-stripe-node-PaymentIntents.spec-00
+description: "Real-world payments code from stripe/stripe-node (4305\u2B50). File:\
+  \ test/resources/PaymentIntents.spec.js"
+source:
+  repo: stripe/stripe-node
+  file: test/resources/PaymentIntents.spec.js
+  url: https://github.com/stripe/stripe-node/blob/HEAD/test/resources/PaymentIntents.spec.js
+  stars: 4305
+  domain: payments
+input:
+  scope: Payment processing
+  context_file: evals/fixtures/payments-stripe-stripe-node-PaymentIntents.spec-00.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - payments
+  keywords: []

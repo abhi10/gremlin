@@ -1,0 +1,19 @@
+name: database-hasura-graphql-engine-Migrations-04
+description: "Real-world database code from hasura/graphql-engine (31874\u2B50). File:\
+  \ frontend/libs/console/legacy-ce/src/lib/components/Services/Data/Migrations/Migrations.js"
+source:
+  repo: hasura/graphql-engine
+  file: frontend/libs/console/legacy-ce/src/lib/components/Services/Data/Migrations/Migrations.js
+  url: https://github.com/hasura/graphql-engine/blob/HEAD/frontend/libs/console/legacy-ce/src/lib/components/Services/Data/Migrations/Migrations.js
+  stars: 31874
+  domain: database
+input:
+  scope: Database operations
+  context_file: evals/fixtures/database-hasura-graphql-engine-Migrations-04.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - database
+  keywords: []

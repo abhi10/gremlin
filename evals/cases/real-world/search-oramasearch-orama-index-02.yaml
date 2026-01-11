@@ -1,0 +1,18 @@
+name: search-oramasearch-orama-index-02
+description: "Real-world search code from oramasearch/orama (10072\u2B50). File: sandboxes/plugin-docusaurus-v3-sandbox/src/components/HomepageFeatures/index.js"
+source:
+  repo: oramasearch/orama
+  file: sandboxes/plugin-docusaurus-v3-sandbox/src/components/HomepageFeatures/index.js
+  url: https://github.com/oramasearch/orama/blob/HEAD/sandboxes/plugin-docusaurus-v3-sandbox/src/components/HomepageFeatures/index.js
+  stars: 10072
+  domain: search
+input:
+  scope: Search functionality
+  context_file: evals/fixtures/search-oramasearch-orama-index-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - search
+  keywords: []

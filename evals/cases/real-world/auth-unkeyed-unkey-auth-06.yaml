@@ -1,0 +1,18 @@
+name: auth-unkeyed-unkey-auth-06
+description: "Real-world auth code from unkeyed/unkey (5136\u2B50). File: pkg/zen/auth.go"
+source:
+  repo: unkeyed/unkey
+  file: pkg/zen/auth.go
+  url: https://github.com/unkeyed/unkey/blob/HEAD/pkg/zen/auth.go
+  stars: 5136
+  domain: auth
+input:
+  scope: Authentication system
+  context_file: evals/fixtures/auth-unkeyed-unkey-auth-06.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - auth
+  keywords: []

@@ -1,0 +1,18 @@
+name: auth-sahat-satellizer-auth-02
+description: "Real-world auth code from sahat/satellizer (7826\u2B50). File: examples/server/go/auth.go"
+source:
+  repo: sahat/satellizer
+  file: examples/server/go/auth.go
+  url: https://github.com/sahat/satellizer/blob/HEAD/examples/server/go/auth.go
+  stars: 7826
+  domain: auth
+input:
+  scope: Authentication system
+  context_file: evals/fixtures/auth-sahat-satellizer-auth-02.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - auth
+  keywords: []

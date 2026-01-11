@@ -1,0 +1,27 @@
+{
+  "repo": "oramasearch/orama",
+  "file_path": "benchmarks/index.js",
+  "url": "https://github.com/oramasearch/orama/blob/HEAD/benchmarks/index.js",
+  "domain": "search",
+  "language": "TypeScript",
+  "stars": 10072,
+  "repo_description": "\ud83c\udf0c  A complete search engine and RAG pipeline in your browser, server or edge network with support for full-text, vector, and hybrid search in less than 2kb.",
+  "repo_topics": [
+    "algiorithm",
+    "data-structures",
+    "full-text",
+    "javascript",
+    "node",
+    "search",
+    "search-algorithm",
+    "search-engine",
+    "typescript",
+    "typo-tolerance",
+    "vector",
+    "vector-database",
+    "vector-database-embedding",
+    "vector-search",
+    "vector-search-engine"
+  ],
+  "file_size": 4308
+}

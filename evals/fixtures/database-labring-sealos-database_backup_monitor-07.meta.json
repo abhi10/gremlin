@@ -1,0 +1,21 @@
+{
+  "repo": "labring/sealos",
+  "file_path": "service/exceptionmonitor/helper/monitor/database_backup_monitor.go",
+  "url": "https://github.com/labring/sealos/blob/HEAD/service/exceptionmonitor/helper/monitor/database_backup_monitor.go",
+  "domain": "database",
+  "language": "TypeScript",
+  "stars": 16756,
+  "repo_description": "Sealos is an AI-native Cloud Operating System built on Kubernetes that unifies the entire application lifecycle, from development in cloud IDEs to production deployment and management. It is perfect for building and scaling modern AI applications, managed databases (MySQL, PostgreSQL, Redis, MongoDB) and complex microservice architectures.",
+  "repo_topics": [
+    "cloudos",
+    "container",
+    "docker",
+    "golang",
+    "install",
+    "ipvs",
+    "kubeadm",
+    "kubernetes",
+    "kubernetes-ha"
+  ],
+  "file_size": 3577
+}

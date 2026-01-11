@@ -1,0 +1,11 @@
+{
+  "repo": "sahat/satellizer",
+  "file_path": "examples/server/go/auth.go",
+  "url": "https://github.com/sahat/satellizer/blob/HEAD/examples/server/go/auth.go",
+  "domain": "auth",
+  "language": "TypeScript",
+  "stars": 7826,
+  "repo_description": "Token-based AngularJS Authentication",
+  "repo_topics": [],
+  "file_size": 1975
+}

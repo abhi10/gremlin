@@ -1,0 +1,19 @@
+name: file-upload-safrazik-vue-file-agent-upload-server-03
+description: "Real-world file-upload code from safrazik/vue-file-agent (728\u2B50\
+  ). File: upload-server-examples/node/upload-server.js"
+source:
+  repo: safrazik/vue-file-agent
+  file: upload-server-examples/node/upload-server.js
+  url: https://github.com/safrazik/vue-file-agent/blob/HEAD/upload-server-examples/node/upload-server.js
+  stars: 728
+  domain: file-upload
+input:
+  scope: File upload handler
+  context_file: evals/fixtures/file-upload-safrazik-vue-file-agent-upload-server-03.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - file-upload
+  keywords: []

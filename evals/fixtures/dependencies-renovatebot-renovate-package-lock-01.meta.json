@@ -1,0 +1,21 @@
+{
+  "repo": "renovatebot/renovate",
+  "file_path": "lib/modules/manager/npm/__fixtures__/npm7/package-lock.json",
+  "url": "https://github.com/renovatebot/renovate/blob/HEAD/lib/modules/manager/npm/__fixtures__/npm7/package-lock.json",
+  "domain": "dependencies",
+  "language": "TypeScript",
+  "stars": 20540,
+  "repo_description": "Home of the Renovate CLI: Cross-platform Dependency Automation by Mend.io",
+  "repo_topics": [
+    "azure-devops",
+    "bitbucket",
+    "dependencies",
+    "dependencies-checking",
+    "dependency-manager",
+    "github",
+    "gitlab",
+    "npm",
+    "package-management"
+  ],
+  "file_size": 4467
+}

@@ -1,0 +1,19 @@
+name: api-hasura-graphql-engine-apiserver-07
+description: "Real-world api code from hasura/graphql-engine (31874\u2B50). File:\
+  \ cli/pkg/console/apiserver.go"
+source:
+  repo: hasura/graphql-engine
+  file: cli/pkg/console/apiserver.go
+  url: https://github.com/hasura/graphql-engine/blob/HEAD/cli/pkg/console/apiserver.go
+  stars: 31874
+  domain: api
+input:
+  scope: API endpoint
+  context_file: evals/fixtures/api-hasura-graphql-engine-apiserver-07.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - api
+  keywords: []

@@ -1,0 +1,19 @@
+name: deployment-lobehub-lobe-chat-docker-pr-comment-00
+description: "Real-world deployment code from lobehub/lobe-chat (69986\u2B50). File:\
+  \ .github/scripts/docker-pr-comment.js"
+source:
+  repo: lobehub/lobe-chat
+  file: .github/scripts/docker-pr-comment.js
+  url: https://github.com/lobehub/lobe-chat/blob/HEAD/.github/scripts/docker-pr-comment.js
+  stars: 69986
+  domain: deployment
+input:
+  scope: Deployment configuration
+  context_file: evals/fixtures/deployment-lobehub-lobe-chat-docker-pr-comment-00.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - deployment
+  keywords: []

@@ -1,0 +1,18 @@
+name: api-appsmithorg-appsmith-API_with_List_Widget_spec-01
+description: "Real-world api code from appsmithorg/appsmith (38868\u2B50). File: app/client/cypress/e2e/Regression/ClientSide/Binding/API_with_List_Widget_spec.js"
+source:
+  repo: appsmithorg/appsmith
+  file: app/client/cypress/e2e/Regression/ClientSide/Binding/API_with_List_Widget_spec.js
+  url: https://github.com/appsmithorg/appsmith/blob/HEAD/app/client/cypress/e2e/Regression/ClientSide/Binding/API_with_List_Widget_spec.js
+  stars: 38868
+  domain: api
+input:
+  scope: API endpoint
+  context_file: evals/fixtures/api-appsmithorg-appsmith-API_with_List_Widget_spec-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - api
+  keywords: []

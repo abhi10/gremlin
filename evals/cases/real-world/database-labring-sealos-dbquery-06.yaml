@@ -1,0 +1,18 @@
+name: database-labring-sealos-dbquery-06
+description: "Real-world database code from labring/sealos (16756\u2B50). File: controllers/pkg/types/dbquery.go"
+source:
+  repo: labring/sealos
+  file: controllers/pkg/types/dbquery.go
+  url: https://github.com/labring/sealos/blob/HEAD/controllers/pkg/types/dbquery.go
+  stars: 16756
+  domain: database
+input:
+  scope: Database operations
+  context_file: evals/fixtures/database-labring-sealos-dbquery-06.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - database
+  keywords: []

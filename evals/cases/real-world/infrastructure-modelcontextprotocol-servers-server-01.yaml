@@ -1,0 +1,19 @@
+name: infrastructure-modelcontextprotocol-servers-server-01
+description: "Real-world infrastructure code from modelcontextprotocol/servers (75906\u2B50\
+  ). File: src/git/src/mcp_server_git/server.py"
+source:
+  repo: modelcontextprotocol/servers
+  file: src/git/src/mcp_server_git/server.py
+  url: https://github.com/modelcontextprotocol/servers/blob/HEAD/src/git/src/mcp_server_git/server.py
+  stars: 75906
+  domain: infrastructure
+input:
+  scope: Infrastructure management
+  context_file: evals/fixtures/infrastructure-modelcontextprotocol-servers-server-01.txt
+  depth: quick
+  threshold: 70
+expected:
+  min_total: 2
+  categories:
+  - infrastructure
+  keywords: []

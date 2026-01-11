@@ -1,0 +1,14 @@
+{
+  "repo": "stripe/stripe-node",
+  "file_path": "test/resources/PaymentIntents.spec.js",
+  "url": "https://github.com/stripe/stripe-node/blob/HEAD/test/resources/PaymentIntents.spec.js",
+  "domain": "payments",
+  "language": "TypeScript",
+  "stars": 4305,
+  "repo_description": "Node.js library for the Stripe API.    ",
+  "repo_topics": [
+    "stripe",
+    "stripe-sdk"
+  ],
+  "file_size": 2822
+}
