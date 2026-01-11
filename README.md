@@ -7,7 +7,7 @@
 Gremlin is a CLI tool that answers: **"What could break in [feature X]?"**
 
 It combines:
-- **50 curated QA patterns** (domain-specific "what if?" questions)
+- **93 curated QA patterns** (domain-specific "what if?" questions)
 - **Claude's reasoning** (applies patterns intelligently to your context)
 - **Rich terminal output** (actionable risk scenarios)
 
@@ -130,6 +130,22 @@ User: gremlin review "checkout flow"
     └─────────────────┘
 ```
 
+## Performance
+
+Gremlin's pattern-based approach achieves **90.7% tie rate** with baseline Claude Sonnet 4 across 54 real-world test cases:
+
+| Metric | Result | Notes |
+|--------|--------|-------|
+| **Tie Rate** | 90.7% | Gremlin matches baseline Claude quality |
+| **Win/Tie Rate** | 98.1% | Combined wins + ties |
+| **Gremlin Wins** | 7.4% | Cases where patterns provide unique value |
+| **Claude Wins** | 1.9% | Minor category labeling differences |
+| **Pattern Count** | 93 | Universal + domain-specific patterns |
+
+**Key Achievement**: 90% reduction in quality gaps (19% → 1.9%) through strategic pattern improvements.
+
+See [Phase 2 Tier 1 Results](evals/PHASE2_TIER1_INVESTIGATION_COMPLETE.md) for detailed analysis.
+
 ## Gremlin Agent for Claude Code
 
 In addition to the CLI tool, Gremlin provides a Claude Code agent for code review:
@@ -169,10 +185,10 @@ Gremlin includes a comprehensive evaluation framework for benchmarking pattern e
 - **Automated reporting**: Generate benchmark reports as marketing assets
 
 **Latest Benchmark Results (Jan 2026):**
-- ✅ **47 real-world projects** validated across 11 domains
-- ✅ **95% accuracy**, 99% consistency across 162 trials
-- ✅ **Competitive with Claude Sonnet 4** (state-of-the-art LLM)
-- 📊 [View full results →](evals/eval-2026-01-10/)
+- ✅ **54 real-world test cases** validated across 11 domains
+- ✅ **90.7% tie rate** with baseline Claude Sonnet 4 (98.1% win/tie rate)
+- ✅ **93 patterns** achieving near-parity with state-of-the-art LLM
+- 📊 [View full results →](evals/PHASE2_TIER1_INVESTIGATION_COMPLETE.md)
 
 **Quick Start:**
 ```bash
