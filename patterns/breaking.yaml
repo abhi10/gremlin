@@ -35,7 +35,7 @@ universal:
     patterns:
       - "What if this fails halfway through?"
       - "What if retry logic triggers duplicate actions?"
-      - "What if the error message leaks sensitive info?"
+      - "What if error messages leak internal paths, architecture, or credentials? [Can enable reconnaissance attacks]"
       - "What if clients ignore Retry-After and create a retry storm?"
 
   - category: Resource Limits
@@ -48,7 +48,7 @@ universal:
   - category: Configuration
     patterns:
       - "What if environment variables aren't passed through to containers?"
-      - "What if test config differs from production config?"
+      - "What if test/mock/fixture code with hardcoded data is deployed to production? [Masks real issues, misleads monitoring]"
       - "What if config is loaded at import time before env vars are set?"
       - "What if feature flag not added during production rollout?"
 
@@ -126,12 +126,13 @@ domain_specific:
       - "What if prod and pre-prod have different feature sets?"
 
   infrastructure:
-    keywords: [server, restart, disk, memory, latency, network, cert, ssl, tls]
+    keywords: [infrastructure, management, server, restart, disk, memory, latency, network, cert, ssl, tls, git, repository, hook]
     patterns:
       - "What if service restarts and gets hit by thundering herd of retries?"
       - "What if latency spike causes client timeout before server finishes?"
       - "What if disk fills up on database or temp directory?"
       - "What if SSL/TLS certificate expires?"
+      - "What if repository contains malicious Git hooks (pre-commit, post-checkout) that execute arbitrary code? [CRITICAL - enables RCE with service privileges]"
 
   dependencies:
     keywords: [sdk, library, package, version, upgrade, pip, npm, external, third-party]
@@ -140,17 +141,19 @@ domain_specific:
       - "What if external API is deprecated without notice?"
 
   security:
-    keywords: [xss, injection, sanitize, escape, vulnerability, security, attack]
+    keywords: [xss, injection, sanitize, escape, vulnerability, security, attack, validate, toctou]
     patterns:
       - "What if user input in metadata field contains XSS payload?"
+      - "What if file/path state changes between validation and use (TOCTOU race)? [Bypasses security boundaries via symlink attacks]"
 
   frontend:
-    keywords: [ui, browser, mobile, desktop, resize, layout, css, react, vue]
+    keywords: [ui, browser, mobile, desktop, resize, layout, css, react, vue, javascript, js]
     patterns:
       - "What if browser window resized to unusual dimensions?"
       - "What if extremely large text pasted into input field?"
       - "What if feature works in one browser but not another?"
       - "What if desktop UI doesn't work well on mobile?"
+      - "What if variables declared without var/let/const become implicit globals? [Causes cross-function pollution, memory leaks in SPAs]"
 
   search:
     keywords: [search, query, filter, index, elasticsearch, algolia, fulltext]
