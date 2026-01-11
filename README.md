@@ -165,7 +165,14 @@ Gremlin includes a comprehensive evaluation framework for benchmarking pattern e
 - **Real-world validation**: Collect code samples from 100+ GitHub projects
 - **Multi-provider support**: Test across Anthropic, OpenAI, and local models
 - **Statistical rigor**: Multiple trials with consistency metrics
+- **Parallel execution**: 5-10x faster with concurrent eval runs
 - **Automated reporting**: Generate benchmark reports as marketing assets
+
+**Latest Benchmark Results (Jan 2026):**
+- ✅ **47 real-world projects** validated across 11 domains
+- ✅ **95% accuracy**, 99% consistency across 162 trials
+- ✅ **Competitive with Claude Sonnet 4** (state-of-the-art LLM)
+- 📊 [View full results →](evals/eval-2026-01-10/)
 
 **Quick Start:**
 ```bash
@@ -175,8 +182,8 @@ python evals/collect_projects.py --total 30
 # Generate eval cases
 python evals/generate_cases.py
 
-# Run evaluations (3 trials per case)
-./evals/run_eval.py --all --trials 3
+# Run evaluations (parallel mode - fast!)
+./evals/run_eval.py --all --trials 3 --parallel --workers 10
 
 # Generate benchmark report
 python evals/generate_report.py --output docs/BENCHMARK.md
@@ -188,10 +195,14 @@ python evals/generate_report.py --output docs/BENCHMARK.md
 ./evals/run_eval.py --all \
   --provider anthropic \
   --model claude-sonnet-4-20250514 \
-  --baseline-model claude-opus-4-5-20251101
+  --baseline-model claude-opus-4-5-20251101 \
+  --parallel
 
 # Domain-specific evaluation
 python evals/collect_projects.py --domain auth --per-domain 10
+
+# Sequential mode (slower but easier to debug)
+./evals/run_eval.py --all --trials 3
 ```
 
 See [evals/README.md](evals/README.md) for complete documentation.
