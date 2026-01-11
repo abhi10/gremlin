@@ -48,7 +48,8 @@ htmlcov/
 Thumbs.db
 
 # Internal docs and sessions (not for public)
-docs/
+docs/*
+!docs/quickstart.md
 sessions/
 
 # Eval results (timestamped, local only)

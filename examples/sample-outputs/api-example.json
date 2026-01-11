@@ -1,0 +1,85 @@
+{
+  "scope": "REST API for product search with filters",
+  "timestamp": "2026-01-11T14:45:00Z",
+  "model": "claude-sonnet-4-20250514",
+  "config": {
+    "depth": "quick",
+    "threshold": 80
+  },
+  "risks": [
+    {
+      "severity": "HIGH",
+      "confidence": 92,
+      "title": "SQL Injection via Search Parameters",
+      "question": "What if search query or filter parameters contain SQL injection payloads?",
+      "impact": "Unauthorized database access. Data exfiltration. Potential data deletion or modification. Complete database compromise.",
+      "domains": ["api", "database", "security"]
+    },
+    {
+      "severity": "HIGH",
+      "confidence": 88,
+      "title": "No Rate Limiting on Search Endpoint",
+      "question": "What if malicious users send thousands of complex search requests per second?",
+      "impact": "Database exhaustion from expensive queries. API resource depletion. Service degradation for legitimate users. Potential DoS.",
+      "domains": ["api", "security", "infrastructure"]
+    },
+    {
+      "severity": "HIGH",
+      "confidence": 85,
+      "title": "Unbounded Result Set Size",
+      "question": "What if pagination is bypassed or limit parameter set to extremely high values?",
+      "impact": "Memory exhaustion from loading massive result sets. Database query timeouts. API response timeout. Server crash under load.",
+      "domains": ["api", "database"]
+    },
+    {
+      "severity": "MEDIUM",
+      "confidence": 82,
+      "title": "Missing Index on Filtered Columns",
+      "question": "What if filter columns lack database indexes causing full table scans?",
+      "impact": "Degraded query performance as data grows. Slow API responses. Database CPU spikes. Query timeouts in production.",
+      "domains": ["database", "api"]
+    },
+    {
+      "severity": "MEDIUM",
+      "confidence": 78,
+      "title": "No Authentication Required",
+      "question": "What if the search API is publicly accessible without authentication?",
+      "impact": "Unlimited data scraping. Competitive intelligence gathering. API abuse without accountability. Rate limit bypass via multiple IPs.",
+      "domains": ["api", "auth", "security"]
+    },
+    {
+      "severity": "MEDIUM",
+      "confidence": 75,
+      "title": "Complex Filter Combinations Not Tested",
+      "question": "What if users combine multiple filters in ways that create expensive query plans?",
+      "impact": "Unexpected slow queries from complex filter joins. Database load spikes. Poor user experience on specific filter combinations.",
+      "domains": ["api", "database"]
+    },
+    {
+      "severity": "LOW",
+      "confidence": 68,
+      "title": "No Cache-Control Headers",
+      "question": "What if identical search queries aren't cached and hit the database every time?",
+      "impact": "Repeated database queries for common searches. Higher server load. Increased response times. Unnecessary infrastructure costs.",
+      "domains": ["api", "infrastructure"]
+    }
+  ],
+  "summary": {
+    "total": 7,
+    "by_severity": {
+      "CRITICAL": 0,
+      "HIGH": 3,
+      "MEDIUM": 3,
+      "LOW": 1
+    },
+    "by_domain": {
+      "api": 7,
+      "database": 5,
+      "security": 3,
+      "infrastructure": 2,
+      "auth": 1
+    },
+    "avg_confidence": 81.1
+  },
+  "execution_time_seconds": 2.8
+}
