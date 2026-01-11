@@ -6,7 +6,6 @@ from typing import Type
 from gremlin.llm.base import LLMConfig, LLMProvider
 from gremlin.llm.providers.anthropic import AnthropicProvider
 
-
 # Registry of available providers
 PROVIDER_REGISTRY: dict[str, Type[LLMProvider]] = {
     "anthropic": AnthropicProvider,
