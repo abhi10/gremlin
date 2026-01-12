@@ -1,98 +1,161 @@
 # Gremlin
 
-> Exploratory QA agent that surfaces risk scenarios using curated patterns + LLM reasoning
+**Find breaking risks before they break production.**
 
-## What is Gremlin?
+Gremlin is an AI-powered exploratory QA agent that surfaces "what if?" scenarios before code ships. It combines 70+ curated risk patterns from real-world incidents with Claude's reasoning to find the edge cases your team misses.
 
-Gremlin is a CLI tool that answers: **"What could break in [feature X]?"**
+## Who Is This For?
 
-It combines:
-- **93 curated QA patterns** (domain-specific "what if?" questions)
-- **Claude's reasoning** (applies patterns intelligently to your context)
-- **Rich terminal output** (actionable risk scenarios)
+| Role | How Gremlin Helps |
+|------|-------------------|
+| **Engineering Leads** | Catch architecture risks in PRDs before sprint planning |
+| **Senior Engineers** | Review your own code with production-incident patterns |
+| **QA Engineers** | Generate exploratory test cases in seconds, not hours |
+| **Platform Teams** | Validate infrastructure changes against known failure modes |
 
-## Installation
-
-```bash
-pip install gremlin-qa
-```
+---
 
 ## Quick Start
 
+### Install
+
 ```bash
-# Set your Anthropic API key
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# Review a feature for risks
-gremlin review "checkout flow with Stripe integration"
-
-# Deep analysis with lower confidence threshold
-gremlin review "auth system" --depth deep --threshold 60
-
-# See available patterns
-gremlin patterns list
-
-# Show patterns for a specific domain
-gremlin patterns show payments
+pip install gremlin-qa
+export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-## Example Output
+### Your First Analysis
 
+```bash
+gremlin review "checkout flow with Stripe"
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ Risk Scenarios for: checkout flow                                           │
-└─────────────────────────────────────────────────────────────────────────────┘
 
-🔴 CRITICAL (95% confidence)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Webhook Race Condition
-
-  What if the Stripe webhook arrives before the order record is committed?
-
-  Impact: Payment captured but order not created. Customer charged without record.
-  Domain: payments
-
-
-🟠 HIGH (87% confidence)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  Double Submit on Payment Button
-
-  What if the user clicks "Pay Now" twice rapidly?
-
-  Impact: Potential duplicate charges.
-  Domain: payments, concurrency
+**Output:**
 ```
+🔍 Analyzing: checkout flow with Stripe
+Detected domains: payments
+
+╭─────────────────────────────────────────────────╮
+│ Risk Scenarios for: checkout flow with Stripe  │
+╰─────────────────────────────────────────────────╯
+
+🔴 CRITICAL (95%)
+Webhook Race Condition
+▌ What if the Stripe webhook arrives before the order record is committed?
+• Impact: Payment captured but order not created. Customer charged without record.
+• Domain: payments
+
+🟠 HIGH (88%)
+Double Submit on Payment Button
+▌ What if the user clicks "Pay Now" twice rapidly?
+• Impact: Potential duplicate charges.
+• Domain: payments, concurrency
+```
+
+---
+
+## Context-Aware Analysis
+
+Gremlin becomes more powerful when you provide context:
+
+```bash
+# From a PRD file
+gremlin review "checkout flow" --context @docs/PRD-checkout.md
+
+# With tech stack info
+gremlin review "payment processing" --context "Stripe webhooks, PostgreSQL, Redis"
+
+# From a git diff
+git diff main | gremlin review "my changes" --context -
+```
+
+---
+
+## Real-World Examples
+
+### Pre-Sprint PRD Review
+
+```bash
+gremlin review "team invitations" --context @prd/team-invites.md --depth deep
+```
+
+**Finds:**
+- What if invited user already has an account with different email?
+- What if invitation expires while user is mid-signup?
+- What if team hits member limit after invite sent but before accepted?
+
+### Pre-Commit Code Review
+
+```bash
+git diff --staged | gremlin review "caching implementation" --context -
+```
+
+**Finds:**
+- What if cache invalidation races with concurrent writes?
+- What if cache size grows unbounded on high-cardinality keys?
+
+### Architecture Decision Review
+
+```bash
+gremlin review "REST to GraphQL migration" --context "Express REST API, 50 endpoints"
+```
+
+**Finds:**
+- What if N+1 queries explode without DataLoader?
+- What if deeply nested queries cause timeout?
+
+---
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `gremlin review "scope"` | Analyze a feature for QA risks |
-| `gremlin patterns list` | Show all available pattern categories |
-| `gremlin patterns show <domain>` | Show patterns for a specific domain |
+| `gremlin review "<scope>"` | Analyze a feature for QA risks |
+| `gremlin review "<scope>" --context "<info>"` | Add context (string, @file, or `-` for stdin) |
+| `gremlin review "<scope>" --depth deep` | More thorough analysis |
+| `gremlin review "<scope>" --threshold 60` | Lower confidence threshold (default: 80) |
+| `gremlin review "<scope>" --output md` | Output as Markdown |
+| `gremlin patterns list` | List all pattern domains |
+| `gremlin patterns show <domain>` | Show patterns for a domain |
 
-## Options for `review`
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--depth` | `quick` | Analysis depth: `quick` or `deep` |
-| `--threshold` | `80` | Confidence filter (0-100) |
-| `--output` | `rich` | Output format: `rich`, `md`, `json` |
+---
 
 ## Pattern Domains
 
-Gremlin includes curated patterns for these domains:
+Gremlin includes 70+ patterns across these domains:
 
-- **auth** - Authentication, sessions, tokens
-- **payments** - Checkout, billing, refunds
-- **file_upload** - File handling, validation
-- **database** - Queries, transactions, migrations
-- **api** - Rate limiting, endpoints
-- **deployment** - Config, containers, environments
-- **infrastructure** - Servers, certs, resources
-- And more...
+| Domain | Example Patterns |
+|--------|------------------|
+| **auth** | Token expiry, session hijacking, OAuth state |
+| **payments** | Double charges, webhook ordering, refund races |
+| **data** | Migration failures, cascade deletes, encoding |
+| **concurrency** | Race conditions, deadlocks, thundering herd |
+| **external** | API rate limits, timeout handling, retries |
+| **file_handling** | Upload validation, storage limits, path traversal |
+| **caching** | Invalidation, stampedes, stale reads |
+
+---
+
+## Integration Ideas
+
+### CI/CD Pipeline
+
+```yaml
+# .github/workflows/gremlin.yml
+- name: Risk Analysis
+  run: |
+    pip install gremlin-qa
+    git diff origin/main | gremlin review "PR changes" --context - --output md >> $GITHUB_STEP_SUMMARY
+```
+
+### Pre-Commit Hook
+
+```bash
+# .git/hooks/pre-commit
+git diff --staged | gremlin review "staged changes" --context - --threshold 90
+```
+
+---
 
 ## How It Works
 
@@ -116,7 +179,7 @@ User: gremlin review "checkout flow"
              │
              ▼
     ┌─────────────────┐
-    │ Build prompt    │  system.md + patterns + scope
+    │ Build prompt    │  system.md + patterns + context
     └────────┬────────┘
              │
              ▼
@@ -130,111 +193,16 @@ User: gremlin review "checkout flow"
     └─────────────────┘
 ```
 
-## Performance
-
-Gremlin's pattern-based approach achieves **90.7% tie rate** with baseline Claude Sonnet 4 across 54 real-world test cases:
-
-| Metric | Result | Notes |
-|--------|--------|-------|
-| **Tie Rate** | 90.7% | Gremlin matches baseline Claude quality |
-| **Win/Tie Rate** | 98.1% | Combined wins + ties |
-| **Gremlin Wins** | 7.4% | Cases where patterns provide unique value |
-| **Claude Wins** | 1.9% | Minor category labeling differences |
-| **Pattern Count** | 93 | Universal + domain-specific patterns |
-
-**Key Achievement**: 90% reduction in quality gaps (19% → 1.9%) through strategic pattern improvements.
-
-See [Phase 2 Tier 1 Results](evals/PHASE2_TIER1_INVESTIGATION_COMPLETE.md) for detailed analysis.
-
-## Gremlin Agent for Claude Code
-
-In addition to the CLI tool, Gremlin provides a Claude Code agent for code review:
-
-**Usage**: Invoke the Gremlin agent during code review sessions in Claude Code
-
-**Benefits**:
-- Line-specific risk identification in PRs
-- Code-focused patterns (database, concurrency, caching)
-- Automatic pattern matching during code review
-- Optional CLI integration for comprehensive analysis
-
-**Agent Patterns**: 45-50 code-review patterns optimized for:
-- Database queries and transactions
-- Concurrency and race conditions
-- Authentication and token handling
-- Caching and distributed systems
-- Background jobs and workers
-- Observability and monitoring
-
-**When to Use**:
-- CLI: Feature-scope analysis from PRD
-- Agent: Code review in Claude Code sessions
-- Both: Comprehensive coverage (recommended)
-
-See [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) for details.
-
-## Evaluation Framework
-
-Gremlin includes a comprehensive evaluation framework for benchmarking pattern effectiveness:
-
-**Features:**
-- **Real-world validation**: Collect code samples from 100+ GitHub projects
-- **Multi-provider support**: Test across Anthropic, OpenAI, and local models
-- **Statistical rigor**: Multiple trials with consistency metrics
-- **Parallel execution**: 5-10x faster with concurrent eval runs
-- **Automated reporting**: Generate benchmark reports as marketing assets
-
-**Latest Benchmark Results (Jan 2026):**
-- ✅ **54 real-world test cases** validated across 11 domains
-- ✅ **90.7% tie rate** with baseline Claude Sonnet 4 (98.1% win/tie rate)
-- ✅ **93 patterns** achieving near-parity with state-of-the-art LLM
-- 📊 [View full results →](evals/PHASE2_TIER1_INVESTIGATION_COMPLETE.md)
-
-**Quick Start:**
-```bash
-# Collect real-world code samples
-python evals/collect_projects.py --total 30
-
-# Generate eval cases
-python evals/generate_cases.py
-
-# Run evaluations (parallel mode - fast!)
-./evals/run_eval.py --all --trials 3 --parallel --workers 10
-
-# Generate benchmark report
-python evals/generate_report.py --output docs/BENCHMARK.md
-```
-
-**Advanced Usage:**
-```bash
-# Cross-model comparison
-./evals/run_eval.py --all \
-  --provider anthropic \
-  --model claude-sonnet-4-20250514 \
-  --baseline-model claude-opus-4-5-20251101 \
-  --parallel
-
-# Domain-specific evaluation
-python evals/collect_projects.py --domain auth --per-domain 10
-
-# Sequential mode (slower but easier to debug)
-./evals/run_eval.py --all --trials 3
-```
-
-See [evals/README.md](evals/README.md) for complete documentation.
+---
 
 ## Development
 
 ```bash
-# Clone the repo
+# Clone and setup
 git clone https://github.com/abhi10/gremlin.git
 cd gremlin
-
-# Create virtual environment
 python -m venv .venv
 source .venv/bin/activate
-
-# Install in development mode
 pip install -e ".[dev]"
 
 # Run tests
@@ -244,15 +212,23 @@ pytest
 ruff check .
 ```
 
+---
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `ANTHROPIC_API_KEY not set` | Run `export ANTHROPIC_API_KEY="sk-ant-..."` |
+| `No patterns matched` | Try broader scope or check `gremlin patterns list` |
+| `Rate limited` | Wait 60s or reduce `--depth` |
+| `Context file not found` | Check path, use `@` prefix for files |
+
+---
+
 ## License
 
 MIT
 
-## Contributing
+---
 
-Contributions welcome! Please open an issue first to discuss what you'd like to change.
-
-## Acknowledgments
-
-- Inspired by exploratory testing principles from James Bach and James Whittaker
-- Powered by [Claude](https://anthropic.com) from Anthropic
+*Gremlin: Because the best bug is the one you never ship.*
