@@ -55,3 +55,4 @@ sessions/
 # Eval results (timestamped, local only)
 evals/results/
 evals/phase2_tier1_full_eval.log
+proposals/
