@@ -87,6 +87,7 @@ gremlin patterns show payments
 | `--output` | `rich` | Output format: `rich`, `md`, `json` |
 | `--patterns` | - | Custom patterns file (YAML) |
 | `--context` | - | Additional context: string, `@file`, or `-` for stdin |
+| `--validate` | `false` | Run second pass to filter hallucinations |
 
 ## Custom Patterns
 
