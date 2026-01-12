@@ -13,6 +13,8 @@ from gremlin.core.inference import infer_domains
 from gremlin.core.patterns import (
     get_domain_keywords,
     load_all_patterns,
+    load_patterns,
+    merge_patterns,
     select_patterns,
 )
 from gremlin.core.prompts import build_prompt, load_system_prompt
@@ -96,6 +98,12 @@ def review(
         "-c",
         help="Additional context: string, @filepath, or - for stdin",
     ),
+    patterns_file: str = typer.Option(
+        None,
+        "--patterns",
+        "-p",
+        help="Custom patterns file (YAML). Merged with built-in patterns.",
+    ),
     depth: str = typer.Option(
         "quick", "--depth", "-d", help="Analysis depth: quick or deep"
     ),
@@ -114,6 +122,7 @@ def review(
         gremlin review "checkout" --context "Using Stripe, Next.js"
         gremlin review "auth" --context @src/auth/login.ts
         git diff | gremlin review "changes" --context -
+        gremlin review "image upload" --patterns @my-patterns.yaml
     """
     # Resolve context input
     try:
@@ -129,6 +138,38 @@ def review(
     except FileNotFoundError as e:
         console.print(f"[red]Error: Required file not found: {e.filename}[/red]")
         raise typer.Exit(1)
+
+    # Load project-level patterns (.gremlin/patterns.yaml)
+    project_patterns_path = Path.cwd() / ".gremlin" / "patterns.yaml"
+    if project_patterns_path.exists():
+        try:
+            project_patterns = load_patterns(project_patterns_path)
+            all_patterns = merge_patterns(all_patterns, project_patterns)
+            if output == "rich":
+                console.print("[dim]Loaded project patterns: .gremlin/patterns.yaml[/dim]")
+        except Exception as e:
+            console.print(f"[yellow]Warning: Failed to load project patterns: {e}[/yellow]")
+
+    # Load custom patterns from --patterns flag
+    if patterns_file:
+        # Support @filepath syntax like --context
+        if patterns_file.startswith("@"):
+            patterns_path = Path(patterns_file[1:])
+        else:
+            patterns_path = Path(patterns_file)
+
+        if not patterns_path.exists():
+            console.print(f"[red]Error: Custom patterns file not found: {patterns_path}[/red]")
+            raise typer.Exit(1)
+
+        try:
+            custom_patterns = load_patterns(patterns_path)
+            all_patterns = merge_patterns(all_patterns, custom_patterns)
+            if output == "rich":
+                console.print(f"[dim]Loaded custom patterns: {patterns_path}[/dim]")
+        except Exception as e:
+            console.print(f"[red]Error loading custom patterns: {e}[/red]")
+            raise typer.Exit(1)
 
     # Infer domains from scope
     domain_keywords = get_domain_keywords(all_patterns)
