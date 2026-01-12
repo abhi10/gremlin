@@ -80,6 +80,38 @@ gremlin patterns show payments
 | `--depth` | `quick` | Analysis depth: `quick` or `deep` |
 | `--threshold` | `80` | Confidence filter (0-100) |
 | `--output` | `rich` | Output format: `rich`, `md`, `json` |
+| `--patterns` | - | Custom patterns file (YAML) |
+| `--context` | - | Additional context: string, `@file`, or `-` for stdin |
+
+## Custom Patterns
+
+Add domain-specific patterns for your codebase:
+
+### Project-level (auto-loaded)
+
+```yaml
+# .gremlin/patterns.yaml
+domain_specific:
+  image_processing:
+    keywords: [image, photo, upload, resize, cdn]
+    patterns:
+      - "What if EXIF rotation is ignored during resize?"
+      - "What if CDN cache serves stale image after update?"
+```
+
+### Via `--patterns` flag
+
+```bash
+gremlin review "image upload" --patterns @my-patterns.yaml
+```
+
+### Learn from incidents
+
+```bash
+gremlin learn "Portrait images displayed sideways" --domain files --source prod-incident
+```
+
+See [docs/CUSTOM_PATTERNS.md](docs/CUSTOM_PATTERNS.md) for the full authoring guide.
 
 ## Pattern Domains
 
@@ -144,7 +176,7 @@ Gremlin's pattern-based approach achieves **90.7% tie rate** with baseline Claud
 
 **Key Achievement**: 90% reduction in quality gaps (19% → 1.9%) through strategic pattern improvements.
 
-See [Phase 2 Tier 1 Results](evals/PHASE2_TIER1_INVESTIGATION_COMPLETE.md) for detailed analysis.
+See [Phase 2 Tier 1 Results](evals/RESULTS.md) for detailed analysis.
 
 ## Gremlin Agent for Claude Code
 
@@ -188,7 +220,7 @@ Gremlin includes a comprehensive evaluation framework for benchmarking pattern e
 - ✅ **54 real-world test cases** validated across 11 domains
 - ✅ **90.7% tie rate** with baseline Claude Sonnet 4 (98.1% win/tie rate)
 - ✅ **93 patterns** achieving near-parity with state-of-the-art LLM
-- 📊 [View full results →](evals/PHASE2_TIER1_INVESTIGATION_COMPLETE.md)
+- 📊 [View full results →](evals/RESULTS.md)
 
 **Quick Start:**
 ```bash
