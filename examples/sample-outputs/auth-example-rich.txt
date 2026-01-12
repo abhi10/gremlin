@@ -1,0 +1,105 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Risk Scenarios for: user authentication with JWT and email/password         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+🔴 CRITICAL (95% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  JWT Without Expiration Time
+
+  What if JWT tokens are created without an expiration claim?
+
+  Impact: Tokens remain valid indefinitely. Stolen tokens never expire.
+  No session rotation. Complete authentication bypass if token leaked.
+  Domain: auth, security
+
+
+🔴 CRITICAL (92% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Timing Attack on Password Comparison
+
+  What if password verification uses non-constant-time string comparison?
+
+  Impact: Attackers can deduce password characters through timing analysis.
+  Password enumeration possible. Even bcrypt doesn't protect if comparison leaks timing.
+  Domain: auth, security
+
+
+🔴 CRITICAL (90% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  No Rate Limiting on Login Endpoint
+
+  What if attackers can attempt unlimited login requests?
+
+  Impact: Brute force attacks succeed against weak passwords.
+  Account takeover. Credential stuffing attacks. Service degradation from spam.
+  Domain: auth, api, security
+
+
+🟠 HIGH (88% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Session Token Not Invalidated on Logout
+
+  What if logout only clears the client-side token but not the server-side session?
+
+  Impact: Stolen tokens remain valid after user logout.
+  Session hijacking possible. No way to revoke compromised tokens.
+  Domain: auth
+
+
+🟠 HIGH (85% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  JWT Algorithm Confusion Attack
+
+  What if JWT verification doesn't enforce the expected algorithm (RS256 vs HS256)?
+
+  Impact: Attackers can forge tokens by switching algorithm in header.
+  Complete authentication bypass. Sign tokens with public key as HMAC secret.
+  Domain: auth, security
+
+
+🟠 HIGH (83% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Password Reset Token Not Single-Use
+
+  What if password reset tokens can be reused multiple times?
+
+  Impact: Token interception allows account takeover even after legitimate reset.
+  Attacker can reset password again using same token.
+  Domain: auth
+
+
+🟡 MEDIUM (78% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Email Verification Required But Not Enforced
+
+  What if email verification is sent but users can still access the system before verifying?
+
+  Impact: Fake accounts with invalid emails. Spam accounts. Cannot contact users.
+  Email-based recovery fails for unverified accounts.
+  Domain: auth
+
+
+🟡 MEDIUM (75% confidence)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  JWT Secret Key in Environment Variable
+
+  What if the JWT signing secret is stored as a plain environment variable?
+
+  Impact: Secret visible in process listings, logs, container inspection.
+  Secret rotation difficult. Exposed in error messages or debugging output.
+  Domain: auth, deployment, security
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Found 8 risk scenarios
+Severity breakdown: 3 CRITICAL, 3 HIGH, 2 MEDIUM
+
+Analysis completed in 3.2 seconds
