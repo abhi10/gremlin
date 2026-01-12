@@ -18,6 +18,7 @@ from gremlin.core.patterns import (
     select_patterns,
 )
 from gremlin.core.prompts import build_prompt, load_system_prompt
+from gremlin.core.validator import VALIDATION_SYSTEM_PROMPT, build_validation_prompt
 from gremlin.llm.claude import call_claude, get_client
 from gremlin.output.renderer import render_json, render_markdown, render_rich
 
@@ -113,6 +114,9 @@ def review(
     output: str = typer.Option(
         "rich", "--output", "-o", help="Output format: rich, md, json"
     ),
+    validate: bool = typer.Option(
+        False, "--validate", "-V", help="Run second pass to filter hallucinations"
+    ),
 ) -> None:
     """Analyze a feature/scope for QA risks.
 
@@ -123,6 +127,7 @@ def review(
         gremlin review "auth" --context @src/auth/login.ts
         git diff | gremlin review "changes" --context -
         gremlin review "image upload" --patterns @my-patterns.yaml
+        gremlin review "checkout" --validate  # Filter low-quality risks
     """
     # Resolve context input
     try:
@@ -212,6 +217,19 @@ def review(
         except Exception as e:
             console.print(f"[red]Error calling Claude API: {e}[/red]")
             raise typer.Exit(1)
+
+    # Optional validation pass
+    if validate:
+        if output == "rich":
+            console.print("[dim]Running validation pass...[/dim]")
+        with console.status("[bold yellow]Validating risks...[/bold yellow]", spinner="dots"):
+            try:
+                validation_prompt = build_validation_prompt(scope, response)
+                response = call_claude(client, VALIDATION_SYSTEM_PROMPT, validation_prompt)
+            except Exception as e:
+                console.print(
+                    f"[yellow]Warning: Validation failed, using unvalidated results: {e}[/yellow]"
+                )
 
     # Render output
     if output == "rich":
