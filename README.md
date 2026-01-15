@@ -27,6 +27,8 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 ## Quick Start
 
+### CLI Usage
+
 ```bash
 # Review a feature for risks
 gremlin review "checkout flow with Stripe integration"
@@ -40,6 +42,39 @@ gremlin patterns list
 # Show patterns for a specific domain
 gremlin patterns show payments
 ```
+
+### Programmatic API (New in v0.2.0)
+
+```python
+from gremlin import Gremlin
+
+# Basic usage
+gremlin = Gremlin()
+result = gremlin.analyze("user authentication")
+
+# Check for critical risks
+if result.has_critical_risks():
+    print(f"Found {result.critical_count} critical risks!")
+    for risk in result.risks:
+        print(f"- [{risk.severity}] {risk.scenario}")
+
+# Multiple output formats
+json_output = result.to_json()       # JSON string
+junit_xml = result.to_junit()        # JUnit XML for CI
+llm_format = result.format_for_llm() # Concise format for agents
+
+# Async support for agent frameworks
+result = await gremlin.analyze_async("payment processing")
+
+# With additional context
+result = gremlin.analyze(
+    scope="checkout flow",
+    context="Using Stripe API with webhook handling",
+    depth="deep"
+)
+```
+
+See the [API documentation](#programmatic-api) below for detailed usage.
 
 ## Example Output
 
@@ -187,6 +222,178 @@ See [Phase 2 Tier 1 Results](evals/RESULTS.md) for detailed analysis.
 ## Claude Code Integration
 
 Gremlin also provides a Claude Code agent for code-focused risk analysis during PR reviews. See [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) for setup.
+
+## Programmatic API
+
+Gremlin can be used as a Python library for integration with agent frameworks, CI/CD pipelines, and custom tools.
+
+### Installation
+
+```bash
+pip install gremlin-qa
+# Or for development:
+pip install -e ".[dev]"
+```
+
+### Basic Usage
+
+```python
+from gremlin import Gremlin, Risk, AnalysisResult
+
+# Initialize analyzer
+gremlin = Gremlin()
+
+# Analyze a scope
+result = gremlin.analyze("checkout flow")
+
+# Access results
+print(f"Found {len(result.risks)} risks")
+print(f"Matched domains: {result.matched_domains}")
+print(f"Pattern count: {result.pattern_count}")
+```
+
+### Configuration
+
+```python
+# Use different provider/model
+gremlin = Gremlin(
+    provider="anthropic",           # anthropic, openai, ollama
+    model="claude-sonnet-4-20250514",
+    threshold=80                     # Confidence threshold
+)
+
+# Analyze with context
+result = gremlin.analyze(
+    scope="user authentication",
+    context="Using JWT with Redis session store",
+    depth="deep"                     # quick or deep
+)
+```
+
+### Output Formats
+
+```python
+# Dictionary (for JSON APIs)
+data = result.to_dict()
+
+# JSON string
+json_str = result.to_json()
+
+# JUnit XML (for CI/CD integration)
+junit_xml = result.to_junit()
+
+# LLM-friendly format (for agent consumption)
+agent_input = result.format_for_llm()
+```
+
+### Risk Analysis
+
+```python
+# Check risk severity
+if result.has_critical_risks():
+    print(f"⚠️  {result.critical_count} critical risks found")
+
+if result.has_high_severity_risks():
+    print(f"Found {result.high_count} high + {result.critical_count} critical")
+
+# Iterate through risks
+for risk in result.risks:
+    print(f"[{risk.severity}] ({risk.confidence}%)")
+    print(f"  Scenario: {risk.scenario}")
+    print(f"  Impact: {risk.impact}")
+    print(f"  Domains: {', '.join(risk.domains)}")
+```
+
+### Async Support
+
+```python
+import asyncio
+from gremlin import Gremlin
+
+async def analyze_features():
+    gremlin = Gremlin()
+
+    # Run multiple analyses concurrently
+    results = await asyncio.gather(
+        gremlin.analyze_async("checkout flow"),
+        gremlin.analyze_async("user authentication"),
+        gremlin.analyze_async("file upload")
+    )
+
+    for result in results:
+        print(f"{result.scope}: {len(result.risks)} risks")
+
+asyncio.run(analyze_features())
+```
+
+### Use Cases
+
+**1. LLM Agent Tool**
+```python
+from gremlin import Gremlin
+
+def analyze_code_risks(code: str, feature: str) -> str:
+    """Tool for LLM agents to analyze code risks."""
+    gremlin = Gremlin()
+    result = gremlin.analyze(scope=feature, context=code)
+    return result.format_for_llm()
+
+# Use with LangChain, CrewAI, AutoGen, etc.
+```
+
+**2. CI/CD Integration**
+```python
+from gremlin import Gremlin
+import sys
+
+gremlin = Gremlin(threshold=70)
+result = gremlin.analyze("PR changes", context=diff_content)
+
+# Output JUnit XML
+with open("gremlin-results.xml", "w") as f:
+    f.write(result.to_junit())
+
+# Exit with error if critical risks found
+if result.has_critical_risks():
+    print(f"❌ Found {result.critical_count} critical risks")
+    sys.exit(1)
+```
+
+**3. Custom Validation Pipeline**
+```python
+from gremlin import Gremlin
+
+def validate_feature_design(prd: str, feature_name: str) -> dict:
+    """Validate a feature design for risks."""
+    gremlin = Gremlin(depth="deep")
+    result = gremlin.analyze(feature_name, context=prd)
+
+    return {
+        "feature": feature_name,
+        "risk_count": len(result.risks),
+        "critical": result.critical_count,
+        "high": result.high_count,
+        "requires_review": result.has_high_severity_risks(),
+        "report": result.to_dict()
+    }
+```
+
+### API Reference
+
+**Classes:**
+- `Gremlin` - Main analyzer class
+- `Risk` - Individual risk finding with severity, confidence, scenario, impact
+- `AnalysisResult` - Complete analysis with multiple output formats
+
+**Methods:**
+- `Gremlin.analyze(scope, context, depth)` - Synchronous analysis
+- `Gremlin.analyze_async(scope, context, depth)` - Async analysis
+- `AnalysisResult.to_dict()` - Dictionary serialization
+- `AnalysisResult.to_json()` - JSON string
+- `AnalysisResult.to_junit()` - JUnit XML
+- `AnalysisResult.format_for_llm()` - LLM-friendly format
+- `AnalysisResult.has_critical_risks()` - Check for critical risks
+- `AnalysisResult.has_high_severity_risks()` - Check for high+ risks
 
 ## Development
 

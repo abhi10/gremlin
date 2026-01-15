@@ -4,12 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Gremlin is an exploratory QA CLI tool that identifies risk scenarios in software features using:
-- 50 curated QA patterns (domain-specific "what if?" questions)
+Gremlin is an exploratory QA tool (CLI + Python library) that identifies risk scenarios in software features using:
+- 93 curated QA patterns (domain-specific "what if?" questions)
 - Claude's reasoning (applies patterns intelligently to user-provided scope)
 - Rich terminal output (actionable risk scenarios)
 
-Users run commands like `gremlin review "checkout flow"` and receive ranked risk scenarios with severity, confidence, and impact analysis.
+**Two ways to use Gremlin:**
+1. **CLI:** `gremlin review "checkout flow"` - Command-line interface
+2. **API:** `from gremlin import Gremlin` - Python library for integrations
+
+Users receive ranked risk scenarios with severity, confidence, and impact analysis.
 
 ## Development Commands
 
@@ -46,6 +50,8 @@ ruff check --fix .
 ```
 
 ### Running the Tool
+
+**CLI Usage:**
 ```bash
 # Basic review
 gremlin review "checkout flow"
@@ -63,6 +69,27 @@ gremlin patterns list
 gremlin patterns show payments
 ```
 
+**Programmatic API Usage (New):**
+```python
+from gremlin import Gremlin
+
+# Basic usage
+gremlin = Gremlin()
+result = gremlin.analyze("checkout flow")
+
+# Check results
+if result.has_critical_risks():
+    print(f"Found {result.critical_count} critical risks")
+
+# Multiple output formats
+json_output = result.to_json()
+junit_xml = result.to_junit()
+llm_format = result.format_for_llm()
+
+# Async support
+result = await gremlin.analyze_async("payment processing")
+```
+
 ### Evaluation Framework
 ```bash
 # Run A/B testing evaluation comparing Gremlin vs raw Claude
@@ -76,30 +103,34 @@ gremlin patterns show payments
 ### Core Flow
 The application follows this pipeline:
 
-1. **CLI Entry** (`gremlin/cli.py`)
-   - Parses user input: scope, depth, threshold, context
-   - Context can be: direct string, `@filepath`, or `-` for stdin
+**Entry Points:**
+- **CLI:** `gremlin/cli.py` - Parses command-line arguments
+- **API:** `gremlin/api.py` - Programmatic interface (`Gremlin` class)
 
-2. **Domain Inference** (`gremlin/core/inference.py`)
+**Analysis Pipeline (used by both CLI and API):**
+
+1. **Domain Inference** (`gremlin/core/inference.py`)
    - Matches scope keywords to pattern domains
    - Example: "checkout" → `payments` domain
 
-3. **Pattern Selection** (`gremlin/core/patterns.py`)
+2. **Pattern Selection** (`gremlin/core/patterns.py`)
    - Loads patterns from `patterns/breaking.yaml`
    - Selects universal patterns + matched domain patterns
    - Universal patterns always apply, domain-specific only when matched
 
-4. **Prompt Building** (`gremlin/core/prompts.py`)
+3. **Prompt Building** (`gremlin/core/prompts.py`)
    - Combines system prompt (`prompts/system.md`) with selected patterns
    - Adds user scope, depth, threshold, and optional context
    - Creates structured prompt for Claude API
 
-5. **LLM Call** (`gremlin/llm/claude.py`)
-   - Calls Anthropic API with constructed prompts
+4. **LLM Call** (`gremlin/llm/factory.py` + `gremlin/llm/providers/`)
+   - Calls LLM API with constructed prompts
+   - Supports multiple providers: Anthropic (default), OpenAI, Ollama
    - Uses `claude-sonnet-4-20250514` by default (override via `GREMLIN_MODEL` env var)
 
-6. **Output Rendering** (`gremlin/output/renderer.py`)
-   - Formats response as rich terminal output (default), markdown, or JSON
+5. **Response Processing:**
+   - **API:** Returns structured `AnalysisResult` with `Risk` objects
+   - **CLI:** Renders via `gremlin/output/renderer.py` (rich, markdown, or JSON)
 
 ## Gremlin Agent vs CLI Tool
 
@@ -161,9 +192,12 @@ The agent can optionally invoke the CLI for enhanced analysis:
 
 ## Important Files
 
-- `patterns/breaking.yaml`: 50 curated QA patterns organized by domain
+- `patterns/breaking.yaml`: 93 curated QA patterns organized by domain
 - `prompts/system.md`: System prompt defining Gremlin's persona and output format
-- `gremlin/cli.py`: Main CLI entry point and command handlers
+- `gremlin/api.py`: Programmatic API with `Gremlin`, `Risk`, and `AnalysisResult` classes
+- `gremlin/cli.py`: CLI entry point (thin wrapper around api.py)
+- `gremlin/__init__.py`: Public API exports (`Gremlin`, `Risk`, `AnalysisResult`)
+- `tests/test_api.py`: Comprehensive API test suite (23 tests)
 - `pyproject.toml`: Build configuration, dependencies, and tool settings
 
 ## Environment Variables
