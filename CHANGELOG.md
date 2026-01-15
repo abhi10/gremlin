@@ -109,13 +109,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Risk quality is equivalent, only presentation differs
 - Not a functional issue, tracking for future improvement
 
+## [0.2.0] - 2026-01-15
+
+### Added
+
+**Programmatic API (Phase 1):**
+- Python library interface via `from gremlin import Gremlin`
+- `Gremlin` class with synchronous and asynchronous analysis methods
+- `Risk` dataclass for structured risk findings (severity, confidence, scenario, impact, domains)
+- `AnalysisResult` dataclass with comprehensive output formats:
+  - `to_dict()` - Dictionary serialization
+  - `to_json()` - JSON string output
+  - `to_junit()` - JUnit XML for CI/CD integration
+  - `format_for_llm()` - Concise format for LLM agent consumption
+- Async support via `analyze_async()` for agent frameworks
+- Risk severity checking methods: `has_critical_risks()`, `has_high_severity_risks()`
+- Risk counting properties: `critical_count`, `high_count`, `medium_count`, `low_count`
+- Provider-agnostic design (supports Anthropic, OpenAI, Ollama)
+- Structured risk parsing from LLM markdown responses
+
+**Testing:**
+- Comprehensive test suite with 23 new tests for API functionality
+- Unit tests for all dataclasses and methods
+- Mock-based tests for isolation
+- Integration tests with real API calls
+- Async test coverage using anyio
+
+### Changed
+
+- Updated project description from "CLI tool" to "CLI + Python library"
+- CLI is now a thin wrapper around the new programmatic API
+- Version bumped to 0.2.0 (minor version for new feature)
+- Development status upgraded from Alpha to Beta
+
+### Documentation
+
+- Extensive README updates with API documentation and usage examples
+- Three use case examples: LLM agent tool, CI/CD integration, custom validation
+- Updated CLAUDE.md with API architecture documentation
+- API reference section with all classes and methods
+- Async usage examples
+
+### Technical Details
+
+**New Dependencies:**
+- pytest-asyncio>=0.21.0 (async test support)
+
+**Python Support:**
+- Python 3.10, 3.11, 3.12, 3.13 officially supported
+- Added "Framework :: AsyncIO" classifier
+
+**Architecture:**
+- New `gremlin/api.py` module (478 lines)
+- Public API exports in `gremlin/__init__.py`
+- Clean separation between CLI and library interfaces
+- Full backward compatibility with v0.1.0 CLI
+
 ## [Unreleased]
 
 ### Planned Features
 
-**Phase 2 Tier 2 (Optional):**
-- Additional 5 strategic patterns for 92-95% tie rate
-- Focus on idempotency, state transitions, and service privileges
+**Phase 2: Framework Integrations:**
+- Optional LangChain Tool wrapper
+- CrewAI/AutoGen integration examples
+- Direct usage patterns (framework-agnostic)
+
+**Phase 3: CI/CD Mode:**
+- Diff analysis (`--diff origin/main..HEAD`)
+- SARIF output format for GitHub Code Scanning
+- Exit codes for CI pipelines
+- GitHub Actions integration
+
+**Phase 4: IDE Extension:**
+- VS Code extension (thin client using API)
+- Inline risk feedback
+- File save triggers
 
 **Market Readiness:**
 - PyPI publishing
