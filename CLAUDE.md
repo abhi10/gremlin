@@ -15,6 +15,33 @@ Gremlin is an exploratory QA tool (CLI + Python library) that identifies risk sc
 
 Users receive ranked risk scenarios with severity, confidence, and impact analysis.
 
+## ⚠️ CRITICAL: Always Create a New Branch First
+
+**BEFORE starting ANY new requirement, feature, fix, or refactor:**
+
+1. **ALWAYS create a new feature branch from main**
+2. **NEVER commit directly to main**
+3. **ALWAYS create a PR for review before merging**
+
+```bash
+# For EVERY new task, start with:
+git checkout main
+git pull origin main
+git checkout -b <prefix>/descriptive-name
+
+# Prefixes: feat/ fix/ refactor/ docs/ chore/
+# Example: feat/add-custom-patterns
+```
+
+This rule applies to:
+- ✅ New features and functionality
+- ✅ Bug fixes and corrections
+- ✅ Refactoring and code improvements
+- ✅ Documentation updates
+- ✅ Any change to the codebase
+
+**Exception:** None. Always use a branch.
+
 ## Development Commands
 
 ### Setup
