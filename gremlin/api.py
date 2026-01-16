@@ -118,7 +118,8 @@ class AnalysisResult:
 
         xml_parts = [
             '<?xml version="1.0" encoding="UTF-8"?>',
-            f'<testsuite name="Gremlin QA Analysis" tests="{test_count}" failures="{failure_count}">',
+            f'<testsuite name="Gremlin QA Analysis" '
+            f'tests="{test_count}" failures="{failure_count}">',
         ]
 
         for i, risk in enumerate(self.risks, 1):
@@ -135,10 +136,10 @@ class AnalysisResult:
                 xml_parts.append(f'Domains: {", ".join(risk.domains)}')
                 xml_parts.append('    </failure>')
             else:
-                xml_parts.append(f'    <system-out>')
+                xml_parts.append('    <system-out>')
                 xml_parts.append(f'{risk.severity} ({risk.confidence}%): {risk.scenario}')
                 xml_parts.append(f'Impact: {risk.impact}')
-                xml_parts.append(f'    </system-out>')
+                xml_parts.append('    </system-out>')
 
             xml_parts.append('  </testcase>')
 
@@ -156,7 +157,8 @@ class AnalysisResult:
 
         parts = [
             f"Risk Analysis for: {self.scope}",
-            f"Found {len(self.risks)} risks ({self.critical_count} critical, {self.high_count} high)",
+            f"Found {len(self.risks)} risks "
+            f"({self.critical_count} critical, {self.high_count} high)",
             "",
         ]
 

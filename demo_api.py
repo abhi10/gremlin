@@ -16,7 +16,7 @@ print(f"   Pattern count: {result.pattern_count}")
 print(f"   Matched domains: {result.matched_domains}")
 
 if result.risks:
-    print(f"\n   First risk:")
+    print("\n   First risk:")
     risk = result.risks[0]
     print(f"   - Severity: {risk.severity} ({risk.confidence}%)")
     print(f"   - Scenario: {risk.scenario[:80]}...")

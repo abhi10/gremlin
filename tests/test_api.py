@@ -1,9 +1,7 @@
 """Tests for Gremlin API."""
 
-import asyncio
 import json
 import os
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
