@@ -31,7 +31,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Gremlin
-        run: pip install gremlin-qa
+        run: pip install gremlin-critic
 
       - name: Run Gremlin Review
         env:
@@ -84,7 +84,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Gremlin
-        run: pip install gremlin-qa
+        run: pip install gremlin-critic
 
       - name: Analyze Changes
         id: analyze
@@ -151,7 +151,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Gremlin
-        run: pip install gremlin-qa
+        run: pip install gremlin-critic
 
       - name: Run Review for ${{ matrix.scope }}
         env:
@@ -202,7 +202,7 @@ gremlin-review:
     - merge_requests
 
   before_script:
-    - pip install gremlin-qa
+    - pip install gremlin-critic
 
   script:
     - |
@@ -239,7 +239,7 @@ gremlin-gate:
     - merge_requests
 
   before_script:
-    - pip install gremlin-qa jq
+    - pip install gremlin-critic jq
 
   script:
     - |
@@ -276,7 +276,7 @@ jobs:
 
       - run:
           name: Install Gremlin
-          command: pip install gremlin-qa
+          command: pip install gremlin-critic
 
       - run:
           name: Run Review
@@ -330,7 +330,7 @@ pipeline {
     stages {
         stage('Setup') {
             steps {
-                sh 'pip install gremlin-qa'
+                sh 'pip install gremlin-critic'
             }
         }
 
@@ -435,7 +435,7 @@ chmod +x .git/hooks/pre-commit
 FROM python:3.11-slim
 
 # Install Gremlin
-RUN pip install gremlin-qa
+RUN pip install gremlin-critic
 
 # Set working directory
 WORKDIR /workspace
@@ -451,7 +451,7 @@ CMD ["--help"]
 docker run --rm \
   -v $(pwd):/workspace \
   -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY \
-  gremlin-qa review "feature scope" --output json
+  gremlin-critic review "feature scope" --output json
 ```
 
 ## Bitbucket Pipelines
@@ -465,7 +465,7 @@ pipelines:
           name: Gremlin Review
           image: python:3.11
           script:
-            - pip install gremlin-qa
+            - pip install gremlin-critic
             - |
               git diff origin/$BITBUCKET_PR_DESTINATION_BRANCH...HEAD | \
               gremlin review "PR #$BITBUCKET_PR_ID changes" \
@@ -506,7 +506,7 @@ steps:
     displayName: 'Set up Python'
 
   - script: |
-      pip install gremlin-qa
+      pip install gremlin-critic
     displayName: 'Install Gremlin'
 
   - script: |

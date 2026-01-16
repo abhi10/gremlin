@@ -230,7 +230,7 @@ Gremlin can be used as a Python library for integration with agent frameworks, C
 ### Installation
 
 ```bash
-pip install gremlin-qa
+pip install gremlin-critic
 # Or for development:
 pip install -e ".[dev]"
 ```

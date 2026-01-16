@@ -111,7 +111,7 @@ rm evals/results/*20260110*.json
    - Integration examples (CI/CD, pre-commit hooks)
 
 3. **Publishing** (1-2 hours)
-   - Publish to PyPI (`pip install gremlin-qa`)
+   - Publish to PyPI (`pip install gremlin-critic`)
    - Create GitHub release v0.1.0
    - Tag and document release notes
 

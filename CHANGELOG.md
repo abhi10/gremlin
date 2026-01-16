@@ -213,7 +213,7 @@ This is the first public release of Gremlin, featuring a production-ready explor
 
 **Getting Started:**
 ```bash
-pip install gremlin-qa
+pip install gremlin-critic
 export ANTHROPIC_API_KEY=sk-ant-...
 gremlin review "checkout flow with Stripe integration"
 ```

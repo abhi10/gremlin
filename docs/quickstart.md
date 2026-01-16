@@ -5,7 +5,7 @@ Get started with Gremlin in 5 minutes.
 ## Installation
 
 ```bash
-pip install gremlin-qa
+pip install gremlin-critic
 ```
 
 ## Setup
@@ -240,7 +240,7 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - run: pip install gremlin-qa
+      - run: pip install gremlin-critic
       - run: |
           git diff origin/main...HEAD | \
           gremlin review "code changes in this PR" \
