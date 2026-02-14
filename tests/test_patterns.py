@@ -8,8 +8,8 @@ from gremlin.core.patterns import (
     select_patterns,
 )
 
-# Path to actual patterns file
-PATTERNS_PATH = Path(__file__).parent.parent / "patterns" / "breaking.yaml"
+# Path to actual patterns file (inside gremlin package)
+PATTERNS_PATH = Path(__file__).parent.parent / "gremlin" / "patterns" / "breaking.yaml"
 
 
 class TestLoadPatterns:

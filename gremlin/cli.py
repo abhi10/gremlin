@@ -29,10 +29,10 @@ app = typer.Typer(
 )
 console = Console()
 
-# Paths to data files
-PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
+# Paths to data files (inside gremlin package)
+PATTERNS_DIR = Path(__file__).parent / "patterns"
 PATTERNS_PATH = PATTERNS_DIR / "breaking.yaml"
-PROMPTS_PATH = Path(__file__).parent.parent / "prompts" / "system.md"
+PROMPTS_PATH = Path(__file__).parent / "prompts" / "system.md"
 INCIDENTS_DIR = PATTERNS_DIR / "incidents"
 
 

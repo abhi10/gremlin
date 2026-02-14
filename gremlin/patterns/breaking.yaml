@@ -1,0 +1,167 @@
+# Gremlin QA Patterns
+# 50 curated "what if?" patterns for exploratory QA
+# Source: Real incidents, Chitram project, industry patterns
+
+universal:
+  - category: Input Validation
+    patterns:
+      - "What if input is empty/null/undefined?"
+      - "What if input exceeds expected length?"
+      - "What if input contains special characters or unicode?"
+      - "What if input type doesn't match expectation?"
+      - "What if parsed JSON/data contains unexpected types (object instead of string, null instead of array)? [Runtime crashes, type errors break critical flows]"
+      - "What if regex with nested quantifiers (.+, .*) processes crafted input causing exponential backtracking? [HIGH - CPU exhaustion, application freeze, DoS]"
+
+  - category: Concurrency
+    patterns:
+      - "What if two users perform this action simultaneously?"
+      - "What if the same user triggers this twice rapidly?"
+      - "What if a background job runs while user is mid-action?"
+      - "What if concurrent transactions with opposing lock orders cause deadlock?"
+
+  - category: State & Data
+    patterns:
+      - "What if referenced data was deleted?"
+      - "What if data changed between read and write?"
+      - "What if cache is stale?"
+      - "What if pagination offset shifts due to concurrent deletes?"
+
+  - category: External Dependencies
+    patterns:
+      - "What if the external API times out?"
+      - "What if the external API returns unexpected schema?"
+      - "What if the external API rate limits us?"
+      - "What if external API is deprecated without notice?"
+      - "What if HTTP/database operations have no timeout and server never responds? [Resource hanging, connection pool exhaustion over time]"
+
+  - category: Error Paths
+    patterns:
+      - "What if this fails halfway through?"
+      - "What if retry logic triggers duplicate actions?"
+      - "What if error messages leak internal paths, architecture, or credentials? [Can enable reconnaissance attacks]"
+      - "What if clients ignore Retry-After and create a retry storm?"
+
+  - category: Resource Limits
+    patterns:
+      - "What if disk fills up on database or temp directory?"
+      - "What if memory exhausted processing unbounded data (large files, API responses, diffs)? [CRITICAL - OOM crash, DoS affecting all users]"
+      - "What if N+1 queries cause connection pool exhaustion under load?"
+      - "What if long-running operations hold DB connections open?"
+
+  - category: Configuration
+    patterns:
+      - "What if environment variables aren't passed through to containers?"
+      - "What if test/mock/fixture code with hardcoded data is deployed to production? [Masks real issues, misleads monitoring]"
+      - "What if config is loaded at import time before env vars are set?"
+      - "What if feature flag not added during production rollout?"
+
+domain_specific:
+  auth:
+    keywords: [login, auth, token, session, jwt, oauth, supabase, user, credential, password, permission, signup]
+    patterns:
+      - "What if different components use different auth providers/verification methods?"
+      - "What if a secret token is leaked via logs, localStorage, or URL?"
+      - "What if user exists in one auth system but not the migrated one?"
+      - "What if user's permissions are revoked but their JWT is still valid?"
+      - "What if token refresh happens simultaneously from two devices?"
+      - "What if clock skew exists between auth service and database?"
+      - "What if direct storage URL bypasses API-level auth checks?"
+      - "What if token verification works in tests but fails in production?"
+
+  payments:
+    keywords: [checkout, payment, billing, subscription, refund, stripe, invoice, charge, transaction]
+    patterns:
+      - "What if webhook arrives before local transaction commits?"
+      - "What if user refreshes page during payment redirect?"
+      - "What if partial refund exceeds captured amount?"
+      - "What if currency conversion happens between quote and charge?"
+      - "What if payment workflow has external dependencies not testable in lower environments?"
+      - "What if user clicks Pay button twice rapidly?"
+      - "What if payment provider returns success but local DB write fails?"
+      - "What if idempotency key is not properly implemented?"
+
+  file_upload:
+    keywords: [upload, file, attachment, image, document, s3, storage, multipart]
+    patterns:
+      - "What if upload is interrupted at 99% and user retries?"
+      - "What if file extension doesn't match actual file content?"
+      - "What if file header claims massive size but file is tiny (or vice versa)?"
+      - "What if uploaded file contains malicious code in EXIF metadata?"
+      - "What if two users upload files with identical names simultaneously?"
+      - "What if file validation only checks magic bytes, not full content?"
+      - "What if many users upload large files simultaneously?"
+      - "What if storage deletion fails but DB deletion succeeds (orphaned files)?"
+
+  image_processing:
+    keywords: [image, resize, thumbnail, pillow, process, convert, transform, exif, photo]
+    patterns:
+      - "What if image has malicious EXIF metadata claiming huge dimensions?"
+      - "What if image processing hangs indefinitely on corrupt file?"
+      - "What if format conversion loses data (transparency, color profile)?"
+      - "What if memory is exhausted during concurrent image processing?"
+
+  database:
+    keywords: [postgres, sql, query, connection, pool, transaction, migration, db, database]
+    patterns:
+      - "What if N+1 queries cause connection pool exhaustion under load?"
+      - "What if pagination offset shifts due to concurrent deletes?"
+      - "What if concurrent transactions with opposing lock orders cause deadlock?"
+      - "What if integer ID or counter reaches maximum value?"
+      - "What if long-running operations hold DB connections open?"
+      - "What if read replica hasn't received data when user is redirected?"
+      - "What if DB migration runs out of memory mid-execution?"
+      - "What if two integrated products have inconsistent DB states?"
+
+  api:
+    keywords: [api, rate, limit, endpoint, request, header, rest, graphql]
+    patterns:
+      - "What if rate limiting is bypassed via header spoofing (X-Forwarded-For)?"
+      - "What if rate limiting fails open when Redis is down?"
+
+  deployment:
+    keywords: [deploy, docker, env, config, production, container, rollout, kubernetes, k8s]
+    patterns:
+      - "What if environment variables aren't passed through to containers?"
+      - "What if test config differs from production config?"
+      - "What if config is loaded at import time before env vars are set?"
+      - "What if new API version runs against old DB schema (migration failure)?"
+      - "What if feature flag not added during production rollout?"
+      - "What if prod and pre-prod have different feature sets?"
+
+  infrastructure:
+    keywords: [infrastructure, management, server, restart, disk, memory, latency, network, cert, ssl, tls, git, repository, hook]
+    patterns:
+      - "What if service restarts and gets hit by thundering herd of retries?"
+      - "What if latency spike causes client timeout before server finishes?"
+      - "What if disk fills up on database or temp directory?"
+      - "What if SSL/TLS certificate expires?"
+      - "What if repository contains malicious Git hooks (pre-commit, post-checkout) that execute arbitrary code? [CRITICAL - enables RCE with service privileges]"
+
+  dependencies:
+    keywords: [sdk, library, package, version, upgrade, pip, npm, external, third-party]
+    patterns:
+      - "What if third-party SDK changes its API between versions?"
+      - "What if external API is deprecated without notice?"
+
+  security:
+    keywords: [xss, injection, sanitize, escape, vulnerability, security, attack, validate, toctou, ssrf, url]
+    patterns:
+      - "What if user input in metadata field contains XSS payload?"
+      - "What if file/path state changes between validation and use (TOCTOU race)? [Bypasses security boundaries via symlink attacks]"
+      - "What if user-controlled URLs target internal services (localhost, 169.254.169.254, private IPs)? [CRITICAL - SSRF enabling internal network scanning, cloud metadata theft]"
+      - "What if test suite validates request structure but never tests authentication/authorization requirements? [CRITICAL - security vulnerabilities ship to production undetected]"
+
+  frontend:
+    keywords: [ui, browser, mobile, desktop, resize, layout, css, react, vue, javascript, js]
+    patterns:
+      - "What if browser window resized to unusual dimensions?"
+      - "What if extremely large text pasted into input field?"
+      - "What if feature works in one browser but not another?"
+      - "What if desktop UI doesn't work well on mobile?"
+      - "What if variables declared without var/let/const become implicit globals? [Causes cross-function pollution, memory leaks in SPAs]"
+
+  search:
+    keywords: [search, query, filter, index, elasticsearch, algolia, fulltext]
+    patterns:
+      - "What if search index is out of sync with database?"
+      - "What if user searches while reindex is running?"

@@ -249,11 +249,11 @@ class Gremlin:
         self.model_name = model
         self.threshold = threshold
 
-        # Resolve paths to built-in resources
-        package_root = Path(__file__).parent.parent
-        self.patterns_dir = patterns_dir or (package_root / "patterns")
+        # Resolve paths to built-in resources (inside gremlin package)
+        package_dir = Path(__file__).parent
+        self.patterns_dir = patterns_dir or (package_dir / "patterns")
         self.system_prompt_path = system_prompt_path or (
-            package_root / "prompts" / "system.md"
+            package_dir / "prompts" / "system.md"
         )
 
         # Load patterns and system prompt once

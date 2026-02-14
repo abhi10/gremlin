@@ -5,6 +5,23 @@
 
 ---
 
+## Table of Contents
+
+- [Completed Work](#completed-work)
+  - [Phase 1: Eval → Pattern Feedback Loop](#-phase-1-eval--pattern-feedback-loop-complete)
+  - [Phase 2 Tier 1: Strategic Pattern Expansion](#-phase-2-tier-1-strategic-pattern-expansion-complete)
+- [Cleanup Recommendations](#cleanup-recommendations)
+- [Next Steps: Three Paths Forward](#next-steps-three-paths-forward)
+  - [Priority 1: Market Readiness](#priority-1-market-readiness--recommended)
+  - [Priority 2: Additional Patterns](#priority-2-phase-2-tier-2---additional-patterns-optional)
+  - [Priority 3: Agent Enhancement](#priority-3-agent-enhancement-alternative)
+  - [Priority 4: Pattern Pruning + Quality Scoring](#priority-4-pattern-pruning--quality-scoring-advanced)
+- [Recommended Immediate Action](#recommended-immediate-action)
+- [Success Metrics](#success-metrics)
+- [Resources](#resources)
+
+---
+
 ## Completed Work
 
 ### ✅ Phase 1: Eval → Pattern Feedback Loop (Complete)
