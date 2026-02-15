@@ -1,6 +1,6 @@
 # Gremlin Improvement Roadmap
 
-**Last Updated**: January 11, 2026
+**Last Updated**: February 15, 2026
 **Current Status**: Phase 2 Tier 1 Complete ✅
 
 ---
@@ -11,8 +11,9 @@
   - [Phase 1: Eval → Pattern Feedback Loop](#-phase-1-eval--pattern-feedback-loop-complete)
   - [Phase 2 Tier 1: Strategic Pattern Expansion](#-phase-2-tier-1-strategic-pattern-expansion-complete)
 - [Cleanup Recommendations](#cleanup-recommendations)
-- [Next Steps: Three Paths Forward](#next-steps-three-paths-forward)
+- [Next Steps: Paths Forward](#next-steps-paths-forward)
   - [Priority 1: Market Readiness](#priority-1-market-readiness--recommended)
+  - [Priority 1.5: Evaluation Maturity](#priority-15-evaluation-maturity--new)
   - [Priority 2: Additional Patterns](#priority-2-phase-2-tier-2---additional-patterns-optional)
   - [Priority 3: Agent Enhancement](#priority-3-agent-enhancement-alternative)
   - [Priority 4: Pattern Pruning + Quality Scoring](#priority-4-pattern-pruning--quality-scoring-advanced)
@@ -102,7 +103,7 @@ rm evals/results/*20260110*.json
 
 ---
 
-## Next Steps: Three Paths Forward
+## Next Steps: Paths Forward
 
 ### Priority 1: Market Readiness 🚀 (Recommended)
 **Effort**: Medium | **Impact**: High | **Risk**: Low
@@ -147,6 +148,65 @@ rm evals/results/*20260110*.json
 - `examples/` directory with usage examples
 - `docs/quickstart.md`
 - `docs/evaluation-results.md`
+
+---
+
+### Priority 1.5: Evaluation Maturity 🧪 (New)
+**Effort**: Medium | **Impact**: High | **Risk**: Low
+
+**Objective**: Improve how Gremlin measures quality — move from consistency metrics to correctness metrics
+
+**Rationale** (from [AI Evaluation Fundamentals](https://en.wikipedia.org/wiki/LLM_evaluation)):
+- Current evals measure *consistency* (pass@k, pass^k) but not *correctness* — a system can be consistently wrong
+- `validator.py` implements LLM-as-judge but is completely disconnected from the pipeline
+- Default `temperature=1.0` is a confounding variable that makes it hard to isolate pattern contribution
+- The httpx validation (16.4% of risks map to real bugs) proved golden set methodology works but is currently manual
+- Deterministic checks (regex, format validation) should catch quality issues before expensive LLM calls
+
+**Steps**:
+
+1. **Wire up `validator.py`** (2-3 hours)
+   - Integrate existing LLM-as-judge into `api.py` `analyze()` pipeline
+   - Expose via `--validate` flag in CLI (flag exists but isn't connected)
+   - Checks: relevance, specificity, duplicates, severity alignment
+   - Related: [#13 — Implement transcript structure](https://github.com/abhi10/gremlin/issues/13)
+
+2. **Add deterministic quality pre-checks** (2-3 hours)
+   - Minimum risk count validation (did the LLM actually produce risks?)
+   - Format compliance (every risk must have scenario + impact)
+   - Domain relevance check (did "checkout flow" produce payments-related risks?)
+   - Duplicate detection via string similarity before LLM dedup
+   - Related: [#14 — Add pattern test format](https://github.com/abhi10/gremlin/issues/14)
+
+3. **Formalize golden set evaluation** (3-4 hours)
+   - Convert the 12 validated httpx risks into verified ground truth fixtures
+   - Measure recall: how many of the 12 does Gremlin find each run?
+   - Extend to pydantic/celery critiques once cross-validated
+   - Related: [#9 — Complete 100-project eval expansion](https://github.com/abhi10/gremlin/issues/9)
+
+4. **Add eval temperature control** (1-2 hours)
+   - Support `--temperature` flag in eval runner
+   - Run evals at both 0.3 (isolate pattern contribution) and 1.0 (creative diversity)
+   - Compare: do patterns help more at low temperature (where LLM creativity is constrained)?
+
+5. **Integrate golden sets into CI** (2-3 hours)
+   - Run golden set recall check on PR (fast: 1 case, 1 trial)
+   - Fail if recall drops below baseline threshold
+   - Related: [#12 — Add eval harness CI](https://github.com/abhi10/gremlin/issues/12)
+
+**Expected Outcome**:
+- Quality measured by correctness (recall against verified bugs), not just consistency
+- Hallucinated risks filtered by LLM-as-judge before reaching user
+- Fast deterministic checks catch 80% of quality issues without API calls
+- Clear signal on whether patterns add value beyond LLM baseline
+
+**Key Insight**: Blend deterministic and non-deterministic checks. Simple regex for format/dedup is cheaper, faster, and more reliable than LLM calls. Use LLM-as-judge only for semantic quality that regex can't catch.
+
+**Files to Modify**:
+- `gremlin/api.py` — wire validator into analyze() pipeline
+- `gremlin/core/validator.py` — already exists, needs integration
+- `evals/run_eval.py` — add temperature flag, golden set mode
+- `evals/golden/` — new directory for verified ground truth fixtures
 
 ---
 
@@ -229,27 +289,25 @@ rm evals/results/*20260110*.json
 
 ## Recommended Immediate Action
 
-**Focus on Priority 1 (Market Readiness)** because:
+**Priority 1 (Market Readiness)** is largely complete:
 1. ✅ Production-ready performance (90.7% tie rate achieved)
-2. ✅ Highest ROI (user adoption > marginal quality gains)
-3. ✅ Clear deliverables (documentation, examples, publishing)
-4. ✅ Enables real-world validation of approach
-5. ✅ Foundation for future improvements based on feedback
+2. ✅ Published to PyPI (`pip install gremlin-critic`)
+3. ✅ Phase 1 API released (v0.2.0)
+4. ✅ Real-world validation: httpx critique validated 16.4% against real issues
+5. ✅ Architecture diagrams created
+
+**Next: Focus on Priority 1.5 (Evaluation Maturity)** because:
+1. Current evals measure consistency, not correctness — this is a blind spot
+2. `validator.py` is already written but disconnected — highest-impact quick win
+3. Golden set methodology proven by httpx validation — needs formalization
+4. Must improve measurement before optimizing further (Priority 2/3/4)
 
 **Timeline**:
-- **Week 1**: Documentation Polish + Examples Creation (Phase 1 ✅ COMPLETE)
-  - ✅ Update README.md with Phase 2 results
-  - ✅ Create CHANGELOG.md
-  - ✅ Update ROADMAP.md
-  - Create quickstart guide
-  - Create examples directory
-- **Week 2**: Publishing + Marketing Assets
-  - PyPI publication
-  - GitHub release v0.1.0
-  - Demo materials (asciicast, screenshots)
-- **Week 3-4**: Gather feedback, prioritize next improvements
+- **Week 1**: Wire `validator.py` + add deterministic quality checks (Steps 1-2)
+- **Week 2**: Formalize golden sets + temperature control (Steps 3-4)
+- **Week 3**: Integrate into eval CI (Step 5)
 
-**Decision Point**: After gathering user feedback, decide if Priority 2 (Tier 2 patterns) or Priority 3 (Agent enhancement) needed
+**Decision Point**: After eval maturity is in place, use the improved metrics to decide if Priority 2 (Tier 2 patterns) or Priority 3 (Agent enhancement) has more impact
 
 ---
 
@@ -263,12 +321,22 @@ rm evals/results/*20260110*.json
 - ✅ No regressions: Gremlin wins stable at 7.4%
 
 ### Market Readiness Success Criteria
-- [ ] Package published to PyPI
-- [ ] GitHub release v0.1.0 created
-- [ ] Examples directory with 3+ usage examples
-- [ ] Quickstart guide created
-- [ ] At least 1 demo asset (asciicast or screenshots)
-- [ ] Documentation accurately reflects Phase 2 results
+- [x] Package published to PyPI (`gremlin-critic`)
+- [x] Phase 1 API released (v0.2.0)
+- [x] Examples directory with usage examples
+- [x] Quickstart guide created
+- [x] Architecture diagrams (draw.io + PNG)
+- [x] Real-world critiques: httpx (73 risks), pydantic (58), celery (47)
+- [x] httpx issue validation: 12/73 risks map to real open issues
+
+### Evaluation Maturity Success Criteria
+- [ ] `validator.py` integrated into `api.py` pipeline
+- [ ] `--validate` flag functional in CLI
+- [ ] Deterministic pre-checks: format, min count, domain relevance
+- [ ] Golden set: 12 httpx verified risks as ground truth fixtures
+- [ ] Golden set recall measured per eval run
+- [ ] Temperature control in eval runner (0.3 + 1.0)
+- [ ] Eval CI runs golden set on PRs ([#12](https://github.com/abhi10/gremlin/issues/12))
 
 ### Long-term North Star
 - **Differentiation**: Gremlin wins on domain-specific critical risks ✅
@@ -282,11 +350,14 @@ rm evals/results/*20260110*.json
 ## Resources
 
 ### Key Files
-- Pattern library: `patterns/breaking.yaml` (93 patterns)
-- System prompt: `prompts/system.md`
+- Pattern library: `gremlin/patterns/breaking.yaml` (107 patterns, 14 domains)
+- System prompt: `gremlin/prompts/system.md`
+- API: `gremlin/api.py` (Gremlin class, Risk, AnalysisResult)
+- Validator: `gremlin/core/validator.py` (LLM-as-judge, needs integration)
 - Eval runner: `evals/run_eval.py`
-- Pattern loader: `gremlin/core/patterns.py`
-- Domain inference: `gremlin/core/inference.py`
+- Eval metrics: `evals/metrics.py`
+- Critiques: `evals/critiques/` (httpx, pydantic, celery)
+- Architecture: `docs/architecture.drawio` (draw.io, 2 tabs)
 
 ### Documentation
 - **Phase 1**: `evals/phase1_pattern_analysis.md`, `evals/PHASE1_*.md`
@@ -317,4 +388,4 @@ python evals/collect_projects.py --total 30
 
 ---
 
-**Current Status**: Phase 2 Tier 1 Complete ✅ | Moving to Market Readiness (Priority 1)
+**Current Status**: Market Readiness ✅ Complete | Moving to Evaluation Maturity (Priority 1.5)
