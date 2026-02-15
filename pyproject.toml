@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "gremlin-critic"
 version = "0.2.0"
-description = "AI critic for your codebase (CLI + Python library) - surfaces risk scenarios using curated patterns + LLM reasoning"
+description = "Pre-ship risk critic (CLI + Python library) — surfaces breaking risk scenarios before they reach production"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"

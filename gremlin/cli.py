@@ -1,4 +1,4 @@
-"""Gremlin CLI - Exploratory QA Agent."""
+"""Gremlin CLI - Pre-Ship Risk Critic."""
 
 import sys
 from pathlib import Path
@@ -24,15 +24,15 @@ from gremlin.output.renderer import render_json, render_markdown, render_rich
 
 app = typer.Typer(
     name="gremlin",
-    help="Exploratory QA agent that surfaces risk scenarios",
+    help="AI critic that surfaces breaking risk scenarios before they reach production",
     add_completion=False,
 )
 console = Console()
 
-# Paths to data files
-PATTERNS_DIR = Path(__file__).parent.parent / "patterns"
+# Paths to data files (inside gremlin package)
+PATTERNS_DIR = Path(__file__).parent / "patterns"
 PATTERNS_PATH = PATTERNS_DIR / "breaking.yaml"
-PROMPTS_PATH = Path(__file__).parent.parent / "prompts" / "system.md"
+PROMPTS_PATH = Path(__file__).parent / "prompts" / "system.md"
 INCIDENTS_DIR = PATTERNS_DIR / "incidents"
 
 
@@ -83,7 +83,7 @@ def main(
         help="Show version and exit",
     ),
 ) -> None:
-    """Gremlin - Exploratory QA Agent.
+    """Gremlin - Pre-Ship Risk Critic.
 
     Surfaces risk scenarios using curated patterns + LLM reasoning.
     """

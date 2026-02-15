@@ -295,6 +295,66 @@ class TestGremlin:
         assert len(risks2) == 1
         assert risks2[0].severity == "HIGH"
 
+    def test_parse_risks_h2_format(self):
+        """Test risk parsing with ## headers (actual LLM output format)."""
+        gremlin = Gremlin()
+
+        response = """
+## 🔴 CRITICAL (85%)
+
+**Token Verification Mismatch**
+
+> What if the UI uses a different OAuth verification method than the API routes?
+
+- **Impact:** Users appear logged in but all API calls fail with 401/403
+- **Domain:** auth
+
+## 🟠 HIGH (90%)
+
+**Cross-Device Token Collision**
+
+> What if token refresh happens simultaneously from mobile app and web browser?
+
+- **Impact:** One device gets invalidated token, forcing re-login
+- **Domain:** auth
+"""
+        risks = gremlin._parse_risks(response, ["auth"])
+        assert len(risks) == 2
+        assert risks[0].severity == "CRITICAL"
+        assert risks[0].confidence == 85
+        assert risks[0].title == "Token Verification Mismatch"
+        assert "OAuth" in risks[0].scenario
+        assert risks[1].severity == "HIGH"
+        assert risks[1].confidence == 90
+
+    def test_parse_risks_mixed_header_levels(self):
+        """Test risk parsing with mixed ## and ### headers."""
+        gremlin = Gremlin()
+
+        response = """
+## 🔴 CRITICAL (95%)
+
+**First Risk**
+
+> What if first scenario happens?
+
+- **Impact:** First impact
+- **Domain:** payments
+
+### 🟡 MEDIUM (70%)
+
+**Second Risk**
+
+> What if second scenario happens?
+
+- **Impact:** Second impact
+- **Domain:** auth
+"""
+        risks = gremlin._parse_risks(response, ["payments"])
+        assert len(risks) == 2
+        assert risks[0].severity == "CRITICAL"
+        assert risks[1].severity == "MEDIUM"
+
     def test_parse_risks_no_matches(self):
         """Test parsing with non-matching format."""
         gremlin = Gremlin()
@@ -351,11 +411,14 @@ class TestGremlinIntegration:
         assert result.scope == "user login with password"
         assert isinstance(result.risks, list)
         assert result.pattern_count > 0
-        # Note: We don't assert specific domains as API responses can vary
-        # Just verify the structure is correct
-        if len(result.risks) > 0:
-            assert all(isinstance(r, Risk) for r in result.risks)
-            assert all(hasattr(r, 'domains') for r in result.risks)
+        # Parser must extract risks from the LLM response
+        assert len(result.risks) > 0, (
+            f"Parser returned 0 risks but raw_response was: {result.raw_response[:200]}"
+        )
+        assert all(isinstance(r, Risk) for r in result.risks)
+        assert all(r.severity in ("CRITICAL", "HIGH", "MEDIUM", "LOW") for r in result.risks)
+        assert all(r.scenario for r in result.risks)
+        assert all(r.impact for r in result.risks)
 
     def test_real_async_api_call(self):
         """Test actual async API call."""

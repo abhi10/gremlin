@@ -1,15 +1,15 @@
 # Gremlin
 
-> Exploratory QA agent that surfaces risk scenarios using curated patterns + LLM reasoning
+> AI critic for your codebase — surfaces breaking risk scenarios before they reach production
 
 ## What is Gremlin?
 
-Gremlin is a CLI tool that answers: **"What could break in [feature X]?"**
+Gremlin is a **pre-ship risk critic** (CLI + Python library) that answers: **"What could break?"**
 
-It combines:
-- **93 curated QA patterns** (domain-specific "what if?" questions)
-- **Claude's reasoning** (applies patterns intelligently to your context)
-- **Rich terminal output** (actionable risk scenarios)
+Feed it a feature spec, PR diff, or plain English — Gremlin critiques it for blind spots using:
+- **93 curated risk patterns** across 12 domains (payments, auth, infra, security, and more)
+- **LLM reasoning** (applies patterns intelligently to your specific context)
+- **Structured output** (severity-ranked risk scenarios with confidence scores)
 
 ## Installation
 
@@ -221,11 +221,11 @@ See [Phase 2 Tier 1 Results](evals/RESULTS.md) for detailed analysis.
 
 ## Claude Code Integration
 
-Gremlin also provides a Claude Code agent for code-focused risk analysis during PR reviews. See [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) for setup.
+Gremlin also provides a Claude Code agent for code-focused risk critique during PR reviews. See [docs/INTEGRATION_GUIDE.md](docs/INTEGRATION_GUIDE.md) for setup.
 
 ## Programmatic API
 
-Gremlin can be used as a Python library for integration with agent frameworks, CI/CD pipelines, and custom tools.
+Gremlin can be used as a Python library for integration with CI/CD pipelines, agent frameworks, and custom tools.
 
 ### Installation
 
