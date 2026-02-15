@@ -20,6 +20,18 @@ from gremlin.core.patterns import (
 from gremlin.core.prompts import build_prompt, load_system_prompt
 from gremlin.llm.factory import get_provider
 
+# Pre-compiled regex patterns for response parsing (avoid recompiling per call)
+_HEADER_PATTERN = re.compile(
+    r'^\s*(?:🔴|🟠|🟡|🟢)?\s*(?:\[)?(\w+)(?:\])?\s*\((\d+)%?\)',
+    re.IGNORECASE
+)
+_IMPACT_PATTERN = re.compile(
+    r'-?\s*\*\*Impact:?\*\*\s*(.+)', re.IGNORECASE
+)
+_DOMAIN_PATTERN = re.compile(
+    r'-?\s*\*\*Domain:?\*\*\s*(.+)', re.IGNORECASE
+)
+
 
 @dataclass
 class Risk:
@@ -261,6 +273,9 @@ class Gremlin:
         self._system_prompt = load_system_prompt(self.system_prompt_path)
         self._domain_keywords = get_domain_keywords(self._patterns)
 
+        # Lazy-initialized LLM provider (created on first analyze() call)
+        self._provider = None
+
     def analyze(
         self,
         scope: str,
@@ -306,13 +321,14 @@ class Gremlin:
             context,
         )
 
-        # Get LLM provider and call
-        provider = get_provider(
-            provider=self.provider_name,
-            model=self.model_name,
-        )
+        # Lazy-init and cache LLM provider (avoids recreating per call)
+        if self._provider is None:
+            self._provider = get_provider(
+                provider=self.provider_name,
+                model=self.model_name,
+            )
 
-        response = provider.complete(full_system, user_message)
+        response = self._provider.complete(full_system, user_message)
 
         # Parse response into structured risks
         risks = self._parse_risks(response.text, matched_domains)
@@ -381,16 +397,7 @@ class Gremlin:
         """
         risks = []
 
-        # Pattern to match risk headers with severity and confidence
-        # Note: ### is already removed by the split, so we match from emoji/severity
-        # Matches formats (after ### is removed by split):
-        # - 🔴 CRITICAL (95%)
-        # - [CRITICAL] (95%)
-        # - CRITICAL (95%)
-        header_pattern = re.compile(
-            r'^\s*(?:🔴|🟠|🟡|🟢)?\s*(?:\[)?(\w+)(?:\])?\s*\((\d+)%?\)',
-            re.IGNORECASE
-        )
+        # Uses pre-compiled module-level _HEADER_PATTERN, _IMPACT_PATTERN, _DOMAIN_PATTERN
 
         # Split by ## or ### headers (LLM may use either heading level)
         sections = re.split(r'\n#{2,3}\s+', '\n' + response_text)
@@ -405,7 +412,7 @@ class Gremlin:
                 continue
 
             # Parse severity and confidence from header (first line)
-            header_match = header_pattern.match(lines[0])
+            header_match = _HEADER_PATTERN.match(lines[0])
             if not header_match:
                 continue
 
@@ -443,9 +450,7 @@ class Gremlin:
             # Extract impact (line starting with - **Impact:**)
             impact = ""
             for line in lines:
-                impact_match = re.search(
-                    r'-?\s*\*\*Impact:?\*\*\s*(.+)', line, re.IGNORECASE
-                )
+                impact_match = _IMPACT_PATTERN.search(line)
                 if impact_match:
                     impact = impact_match.group(1).strip()
                     break
@@ -453,9 +458,7 @@ class Gremlin:
             # Extract domains from text or use matched domains
             risk_domains = []
             for line in lines:
-                domain_match = re.search(
-                    r'-?\s*\*\*Domain:?\*\*\s*(.+)', line, re.IGNORECASE
-                )
+                domain_match = _DOMAIN_PATTERN.search(line)
                 if domain_match:
                     domain_text = domain_match.group(1).strip()
                     risk_domains = [d.strip() for d in domain_text.split(',')]

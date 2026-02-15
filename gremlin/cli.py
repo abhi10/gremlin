@@ -19,7 +19,7 @@ from gremlin.core.patterns import (
 )
 from gremlin.core.prompts import build_prompt, load_system_prompt
 from gremlin.core.validator import VALIDATION_SYSTEM_PROMPT, build_validation_prompt
-from gremlin.llm.claude import call_claude, get_client
+from gremlin.llm.factory import get_provider
 from gremlin.output.renderer import render_json, render_markdown, render_rich
 
 app = typer.Typer(
@@ -204,18 +204,19 @@ def review(
             console.print(f"[dim]Context: {preview}[/dim]")
         console.print()
 
-    # Call Claude
+    # Create LLM provider (reused for analysis + optional validation)
     try:
-        client = get_client()
+        provider = get_provider()
     except ValueError as e:
         console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 
     with console.status("[bold green]Thinking...[/bold green]", spinner="dots"):
         try:
-            response = call_claude(client, full_system, user_message)
+            llm_response = provider.complete(full_system, user_message)
+            response = llm_response.text
         except Exception as e:
-            console.print(f"[red]Error calling Claude API: {e}[/red]")
+            console.print(f"[red]Error calling LLM API: {e}[/red]")
             raise typer.Exit(1)
 
     # Optional validation pass
@@ -225,7 +226,8 @@ def review(
         with console.status("[bold yellow]Validating risks...[/bold yellow]", spinner="dots"):
             try:
                 validation_prompt = build_validation_prompt(scope, response)
-                response = call_claude(client, VALIDATION_SYSTEM_PROMPT, validation_prompt)
+                val_response = provider.complete(VALIDATION_SYSTEM_PROMPT, validation_prompt)
+                response = val_response.text
             except Exception as e:
                 console.print(
                     f"[yellow]Warning: Validation failed, using unvalidated results: {e}[/yellow]"
