@@ -392,8 +392,8 @@ class Gremlin:
             re.IGNORECASE
         )
 
-        # Split by ### headers
-        sections = re.split(r'\n###\s+', '\n' + response_text)
+        # Split by ## or ### headers (LLM may use either heading level)
+        sections = re.split(r'\n#{2,3}\s+', '\n' + response_text)
 
         for section in sections[1:]:  # Skip first empty section
             section = section.strip()
