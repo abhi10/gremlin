@@ -295,17 +295,17 @@ gremlin review "payment system" --output md > docs/payment-risks.md
 
 ### How is Gremlin different from Claude?
 
-Gremlin uses **93 curated QA patterns** combined with Claude's reasoning:
+Gremlin uses **107 curated QA patterns** combined with Claude's reasoning:
 - More consistent risk identification (90.7% quality parity)
-- Domain-specific patterns (payments, auth, database, etc.)
+- Domain-specific patterns (payments, auth, database, serialization, distributed systems, etc.)
 - Structured output optimized for QA workflows
 
 ### What domains does Gremlin cover?
 
-11 domains with 93 patterns:
+14 domains with 107 patterns:
 - auth, payments, file_upload, database, api
 - deployment, infrastructure, search, dependencies
-- frontend, security
+- frontend, security, serialization, distributed
 
 ### Can I add custom patterns?
 

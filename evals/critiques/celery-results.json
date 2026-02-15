@@ -1,0 +1,984 @@
+{
+  "target": "celery/celery",
+  "url": "https://github.com/celery/celery",
+  "date": "2026-02-14T18:50:30.787758",
+  "gremlin_version": "0.2.0",
+  "threshold": 70,
+  "depth": "deep",
+  "areas": [
+    {
+      "area": "Task Execution & Tracing",
+      "files": [
+        "celery/app/trace.py",
+        "celery/app/task.py"
+      ],
+      "result": {
+        "scope": "Task lifecycle management - message receipt through execution, state transitions, signal dispatching, exception processing, time limits, tracer closure building in distributed task queue",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if exception handling creates circular references between traceback frames and task objects that prevent garbage collection?",
+            "impact": "Memory exhaustion over time as failed tasks accumulate. Worker processes crash under load, causing cascading failures across distributed queue.",
+            "domains": [
+              "Resource Limits + Concurrency"
+            ],
+            "title": "Memory Leak from Exception Chaining"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if `task_retry.send()` or `task_failure.send()` signal handlers acquire locks that conflict with worker shutdown sequence?",
+            "impact": "Worker processes hang indefinitely during graceful shutdown, requiring kill -9. Tasks in flight are lost, breaking exactly-once processing guarantees.",
+            "domains": [
+              "Concurrency + State & Data"
+            ],
+            "title": "Signal Handler Deadlock During Shutdown"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if `mark_as_failure()` tries to serialize an exception containing massive nested objects or circular references?",
+            "impact": "Worker hangs indefinitely during task failure processing. Backend storage fills with malformed data. Subsequent task results become corrupted.",
+            "domains": [
+              "External Dependencies + Resource Limits"
+            ],
+            "title": "Backend Serialization Bomb"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if the same task is retried from multiple workers simultaneously due to visibility timeout issues?",
+            "impact": "Duplicate task execution with conflicting state updates. Backend shows inconsistent retry counts and status. Downstream systems process duplicate work.",
+            "domains": [
+              "Concurrency + State & Data"
+            ],
+            "title": "Task State Race During Concurrent Retries"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if `ExceptionInfo` objects with deep tracebacks are retained in signal handler closures or task result storage?",
+            "impact": "Gradual memory growth as exception objects prevent garbage collection of entire execution contexts. Worker memory usage grows unbounded.",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Exception Info Memory Retention"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if task arguments contain sensitive data that gets logged during failures with full repr() serialization?",
+            "impact": "Credentials, PII, or secrets appear in logs. Security breach if logs are compromised or shared with unauthorized personnel.",
+            "domains": [
+              "Error Paths + Configuration"
+            ],
+            "title": "Log Policy Information Disclosure"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if custom signal handlers raise exceptions during `task_failure.send()` or `task_success.send()`?",
+            "impact": "Original task failure gets masked by signal handler failure. Debugging becomes impossible as true root cause is lost. Task appears to fail for wrong reason.",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Signal Handler Exception Masking"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if the tracer closure caches task-specific state that bleeds between different task executions in the same worker process?",
+            "impact": "Tasks see stale data from previous executions. Intermittent bugs that are hard to reproduce. Cross-task data contamination.",
+            "domains": [
+              "State & Data + Concurrency"
+            ],
+            "title": "Tracer Closure State Pollution"
+          }
+        ],
+        "matched_domains": [
+          "image_processing",
+          "api",
+          "infrastructure",
+          "frontend"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 8,
+          "critical": 2,
+          "high": 3,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "## Risk Analysis: Task Lifecycle Management\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**Memory Leak from Exception Chaining**\n\n> What if exception handling creates circular references between traceback frames and task objects that prevent garbage collection?\n\n- **Impact:** Memory exhaustion over time as failed tasks accumulate. Worker processes crash under load, causing cascading failures across distributed queue.\n- **Domain:** Resource Limits + Concurrency\n\nThe code shows traceback cleanup efforts but nested exception handling with `get_pickleable_exception` and `ExceptionInfo` could still create reference cycles, especially with custom task classes holding state.\n\n---\n\n### \ud83d\udd34 CRITICAL (90%)\n\n**Signal Handler Deadlock During Shutdown**\n\n> What if `task_retry.send()` or `task_failure.send()` signal handlers acquire locks that conflict with worker shutdown sequence?\n\n- **Impact:** Worker processes hang indefinitely during graceful shutdown, requiring kill -9. Tasks in flight are lost, breaking exactly-once processing guarantees.\n- **Domain:** Concurrency + State & Data\n\nSignal dispatching happens synchronously within exception handlers while holding task state. Custom signal handlers could deadlock with worker lifecycle management.\n\n---\n\n### \ud83d\udfe0 HIGH (80%)\n\n**Backend Serialization Bomb**\n\n> What if `mark_as_failure()` tries to serialize an exception containing massive nested objects or circular references?\n\n- **Impact:** Worker hangs indefinitely during task failure processing. Backend storage fills with malformed data. Subsequent task results become corrupted.\n- **Domain:** External Dependencies + Resource Limits\n\nThe `get_pickleable_exception` logic attempts to sanitize but complex object graphs in exception arguments could still overwhelm serialization, especially with custom exception types.\n\n---\n\n### \ud83d\udfe0 HIGH (75%)\n\n**Task State Race During Concurrent Retries**\n\n> What if the same task is retried from multiple workers simultaneously due to visibility timeout issues?\n\n- **Impact:** Duplicate task execution with conflicting state updates. Backend shows inconsistent retry counts and status. Downstream systems process duplicate work.\n- **Domain:** Concurrency + State & Data\n\nThe retry handling calls `backend.mark_as_retry()` without coordination. Message broker visibility timeouts could cause the same task to appear available to multiple workers.\n\n---\n\n### \ud83d\udfe0 HIGH (85%)\n\n**Exception Info Memory Retention**\n\n> What if `ExceptionInfo` objects with deep tracebacks are retained in signal handler closures or task result storage?\n\n- **Impact:** Gradual memory growth as exception objects prevent garbage collection of entire execution contexts. Worker memory usage grows unbounded.\n- **Domain:** Resource Limits\n\nDespite cleanup attempts, the code creates multiple `ExceptionInfo` instances and passes them to signal handlers and backends where retention isn't controlled.\n\n---\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Log Policy Information Disclosure**\n\n> What if task arguments contain sensitive data that gets logged during failures with full repr() serialization?\n\n- **Impact:** Credentials, PII, or secrets appear in logs. Security breach if logs are compromised or shared with unauthorized personnel.\n- **Domain:** Error Paths + Configuration\n\nThe `_log_error` method uses `safe_repr(req.args)` and `safe_repr(req.kwargs)` but \"safe\" here means crash-safe, not security-safe. Sensitive data still gets logged.\n\n---\n\n### \ud83d\udfe1 MEDIUM (80%)\n\n**Signal Handler Exception Masking**\n\n> What if custom signal handlers raise exceptions during `task_failure.send()` or `task_success.send()`?\n\n- **Impact:** Original task failure gets masked by signal handler failure. Debugging becomes impossible as true root cause is lost. Task appears to fail for wrong reason.\n- **Domain:** Error Paths\n\nSignal dispatching happens within exception handling paths but isn't wrapped in try/catch. Handler exceptions would bubble up and replace the original task exception.\n\n---\n\n### \ud83d\udfe1 MEDIUM (70%)\n\n**Tracer Closure State Pollution**\n\n> What if the tracer closure caches task-specific state that bleeds between different task executions in the same worker process?\n\n- **Impact:** Tasks see stale data from previous executions. Intermittent bugs that are hard to reproduce. Cross-task data contamination.\n- **Domain:** State & Data + Concurrency\n\nThe module mentions \"one closure per task class\" with cached globals. If closures capture mutable state, subsequent task instances could see modified state from previous runs."
+    },
+    {
+      "area": "Worker Pool & Concurrency",
+      "files": [
+        "celery/concurrency/asynpool.py"
+      ],
+      "result": {
+        "scope": "Process pool concurrency with prefork model - async I/O process pooling, job scheduling, process lifecycle management, inter-process communication via pipes, worker process spawning and cleanup, signal handling",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if worker processes crash or are killed without properly closing their file descriptors, causing the parent to accumulate stale FDs that exhaust the process limit?",
+            "impact": "Process reaches OS file descriptor limit (typically 1024-4096), causing `select()` to fail and entire pool to become non-responsive. All new work rejected.",
+            "domains": [
+              "Resource Limits + Infrastructure"
+            ],
+            "title": "File Descriptor Leak During Process Cleanup"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if a SIGTERM arrives while the pool is in the middle of `_recv_message()` generator state, leaving partial messages in pipes and worker processes in undefined states?",
+            "impact": "Zombie processes that hold resources, corrupted message queues, and potential data loss from jobs that were \"in flight\" during shutdown.",
+            "domains": [
+              "Concurrency + Error Paths"
+            ],
+            "title": "Signal Handler Race During Shutdown"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if a malicious or corrupted job contains deeply nested data structures that cause `_pickle.load()` to consume exponential memory during deserialization?",
+            "impact": "Worker process OOM crash, potentially cascading to parent process if it tries to read the corrupted result. DoS affecting entire pool.",
+            "domains": [
+              "Resource Limits + Input Validation"
+            ],
+            "title": "Pickle Deserialization Bomb"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if the parent process blocks writing to a worker's input pipe while the worker is blocked writing results back, and both pipe buffers are full?",
+            "impact": "Entire pool hangs indefinitely. Workers can't accept new jobs, parent can't distribute work. Requires process restart.",
+            "domains": [
+              "Concurrency + Infrastructure"
+            ],
+            "title": "Inter-Process Deadlock on Pipe Buffers"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if system is under high load and worker processes take longer than `PROC_ALIVE_TIMEOUT` (4.0s) to send the `WORKER_UP` message, causing parent to consider them dead?",
+            "impact": "Pool repeatedly kills and respawns workers that are actually healthy but slow to start, creating a restart loop that prevents any work from completing.",
+            "domains": [
+              "Infrastructure + Configuration"
+            ],
+            "title": "Process Spawn Timeout Race"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if `_recv_message()` generator is in the middle of reading a message header when an OSError occurs, leaving it in an inconsistent state for the next poll cycle?",
+            "impact": "Message parsing gets out of sync, subsequent messages interpreted as garbage, specific worker becomes unusable until restart.",
+            "domains": [
+              "State & Data + Error Paths"
+            ],
+            "title": "Generator State Corruption During Exception"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if `SCHED_STRATEGY_FCFS` is used and one worker becomes slow (due to GC, I/O wait, etc.), causing all subsequent jobs to queue behind it while other workers sit idle?",
+            "impact": "Poor load distribution, artificially reduced throughput, some jobs experience much higher latency than necessary.",
+            "domains": [
+              "Infrastructure + Configuration"
+            ],
+            "title": "Scheduling Strategy Starvation"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if a worker process dies while the parent holds a weakref to its writer, and the weakref callback fires during message processing, modifying data structures mid-operation?",
+            "impact": "`_get_job_writer()` returns `None` unexpectedly, causing AttributeError in job submission code, specific jobs fail to dispatch.",
+            "domains": [
+              "Concurrency + State & Data"
+            ],
+            "title": "WeakReference Callback During Process Death"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if `iterate_file_descriptors_safely()` detects a stale FD and removes it from the source data structure while another thread is simultaneously iterating the same structure?",
+            "impact": "`ValueError` during iteration, potential skip of healthy FDs, or crash if the data structure is corrupted during concurrent modification.",
+            "domains": [
+              "Concurrency + Error Paths"
+            ],
+            "title": "Stale FD Detection Race"
+          },
+          {
+            "severity": "LOW",
+            "confidence": 75,
+            "scenario": "What if the `select.poll()` implementation doesn't properly clean up its internal FD registration table when FDs are closed externally, causing gradual memory growth?",
+            "impact": "Slow memory leak over time, eventually causing OOM after processing many jobs over hours/days. Only affects long-running processes.",
+            "domains": [
+              "Resource Limits + Infrastructure"
+            ],
+            "title": "Poller Registration Memory Leak"
+          }
+        ],
+        "matched_domains": [
+          "image_processing",
+          "database",
+          "infrastructure",
+          "dependencies"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 3,
+          "medium": 4,
+          "low": 1
+        }
+      },
+      "raw_response": "## Risk Analysis: Process Pool Concurrency with Prefork Model\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**File Descriptor Leak During Process Cleanup**\n\n> What if worker processes crash or are killed without properly closing their file descriptors, causing the parent to accumulate stale FDs that exhaust the process limit?\n\n- **Impact:** Process reaches OS file descriptor limit (typically 1024-4096), causing `select()` to fail and entire pool to become non-responsive. All new work rejected.\n- **Domain:** Resource Limits + Infrastructure\n\n### \ud83d\udd34 CRITICAL (80%)\n\n**Signal Handler Race During Shutdown**\n\n> What if a SIGTERM arrives while the pool is in the middle of `_recv_message()` generator state, leaving partial messages in pipes and worker processes in undefined states?\n\n- **Impact:** Zombie processes that hold resources, corrupted message queues, and potential data loss from jobs that were \"in flight\" during shutdown.\n- **Domain:** Concurrency + Error Paths\n\n### \ud83d\udfe0 HIGH (90%)\n\n**Pickle Deserialization Bomb**\n\n> What if a malicious or corrupted job contains deeply nested data structures that cause `_pickle.load()` to consume exponential memory during deserialization?\n\n- **Impact:** Worker process OOM crash, potentially cascading to parent process if it tries to read the corrupted result. DoS affecting entire pool.\n- **Domain:** Resource Limits + Input Validation\n\n### \ud83d\udfe0 HIGH (75%)\n\n**Inter-Process Deadlock on Pipe Buffers**\n\n> What if the parent process blocks writing to a worker's input pipe while the worker is blocked writing results back, and both pipe buffers are full?\n\n- **Impact:** Entire pool hangs indefinitely. Workers can't accept new jobs, parent can't distribute work. Requires process restart.\n- **Domain:** Concurrency + Infrastructure\n\n### \ud83d\udfe0 HIGH (85%)\n\n**Process Spawn Timeout Race**\n\n> What if system is under high load and worker processes take longer than `PROC_ALIVE_TIMEOUT` (4.0s) to send the `WORKER_UP` message, causing parent to consider them dead?\n\n- **Impact:** Pool repeatedly kills and respawns workers that are actually healthy but slow to start, creating a restart loop that prevents any work from completing.\n- **Domain:** Infrastructure + Configuration\n\n### \ud83d\udfe1 MEDIUM (80%)\n\n**Generator State Corruption During Exception**\n\n> What if `_recv_message()` generator is in the middle of reading a message header when an OSError occurs, leaving it in an inconsistent state for the next poll cycle?\n\n- **Impact:** Message parsing gets out of sync, subsequent messages interpreted as garbage, specific worker becomes unusable until restart.\n- **Domain:** State & Data + Error Paths\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Scheduling Strategy Starvation**\n\n> What if `SCHED_STRATEGY_FCFS` is used and one worker becomes slow (due to GC, I/O wait, etc.), causing all subsequent jobs to queue behind it while other workers sit idle?\n\n- **Impact:** Poor load distribution, artificially reduced throughput, some jobs experience much higher latency than necessary.\n- **Domain:** Infrastructure + Configuration\n\n### \ud83d\udfe1 MEDIUM (70%)\n\n**WeakReference Callback During Process Death**\n\n> What if a worker process dies while the parent holds a weakref to its writer, and the weakref callback fires during message processing, modifying data structures mid-operation?\n\n- **Impact:** `_get_job_writer()` returns `None` unexpectedly, causing AttributeError in job submission code, specific jobs fail to dispatch.\n- **Domain:** Concurrency + State & Data\n\n### \ud83d\udfe1 MEDIUM (85%)\n\n**Stale FD Detection Race**\n\n> What if `iterate_file_descriptors_safely()` detects a stale FD and removes it from the source data structure while another thread is simultaneously iterating the same structure?\n\n- **Impact:** `ValueError` during iteration, potential skip of healthy FDs, or crash if the data structure is corrupted during concurrent modification.\n- **Domain:** Concurrency + Error Paths\n\n### \ud83d\udfe2 LOW (75%)\n\n**Poller Registration Memory Leak**\n\n> What if the `select.poll()` implementation doesn't properly clean up its internal FD registration table when FDs are closed externally, causing gradual memory growth?\n\n- **Impact:** Slow memory leak over time, eventually causing OOM after processing many jobs over hours/days. Only affects long-running processes.\n- **Domain:** Resource Limits + Infrastructure"
+    },
+    {
+      "area": "Message Serialization & Security",
+      "files": [
+        "celery/security/serialization.py",
+        "celery/security/certificate.py",
+        "celery/security/key.py",
+        "celery/security/utils.py"
+      ],
+      "result": {
+        "scope": "Celery message serialization with digital signatures - SecureSerializer using SHA-256 HMAC, X.509 certificate chain validation, pickle deserialization of task payloads, protection against message tampering and replay attacks",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if expired certificates are removed from FSCertStore while verification is in progress?",
+            "impact": "Verification could succeed using expired certificate reference, then fail on lookup, or worse - succeed with invalid cert. Message tampering goes undetected.",
+            "domains": [
+              "Concurrency + Security"
+            ],
+            "title": "Certificate Store Race Condition"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if malicious payload contains the DEFAULT_SEPARATOR bytes within the serialized body?",
+            "impact": "split(sep, maxsplit=4) parsing becomes ambiguous. Attacker could inject fake signatures or manipulate which data gets verified vs. executed.",
+            "domains": [
+              "Input Validation + Security"
+            ],
+            "title": "Separator Collision Attack"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if FSCertStore path glob matches huge certificate files or thousands of certificates?",
+            "impact": "Memory exhaustion during startup as all certificates are loaded into _certs dict. Application OOM crash.",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Certificate Loading Memory Exhaustion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if crafted payload has invalid base64 padding in signature/signer fields that b64decode silently truncates?",
+            "impact": "Signature verification could succeed with truncated/modified signature data, bypassing tamper protection.",
+            "domains": [
+              "Input Validation + Security"
+            ],
+            "title": "Base64 Padding Attack"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if certificate expires between FSCertStore loading and actual message verification?",
+            "impact": "Messages signed with expired certificates get verified successfully, undermining trust model.",
+            "domains": [
+              "Security + State"
+            ],
+            "title": "TOCTOU Certificate Expiration"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if payload splits into fewer than 5 parts due to missing separators?",
+            "impact": "IndexError on v[4] access in _unpack, causing deserialization crash instead of graceful failure.",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Split Boundary Confusion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if two certificates have identical issuer + serial number combinations?",
+            "impact": "Second certificate overwrites first in _certs dict, causing signature verification to use wrong certificate.",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Certificate ID Collision"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if the underlying dumps/loads functions from kombu modify global registry state during concurrent operations?",
+            "impact": "Content-type/encoding mismatch between what was signed and what gets deserialized, causing signature validation bypass.",
+            "domains": [
+              "Concurrency + External Dependencies"
+            ],
+            "title": "Kombu Serializer State Mutation"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 78,
+            "scenario": "What if system entropy is low when PSS padding generates random salt?",
+            "impact": "Predictable signatures could enable signature forgery attacks, especially in containerized environments.",
+            "domains": [
+              "Security + Infrastructure"
+            ],
+            "title": "PSS Padding Salt Randomness"
+          }
+        ],
+        "matched_domains": [
+          "infrastructure",
+          "security"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 9,
+          "critical": 2,
+          "high": 3,
+          "medium": 4,
+          "low": 0
+        }
+      }
+    },
+    {
+      "area": "Result Backends",
+      "files": [
+        "celery/backends/base.py"
+      ],
+      "result": {
+        "scope": "Task result storage and retrieval across multiple backends (Redis, database, etc.) - group/chord result tracking, expiration, concurrent state updates, async result polling, result cleanup",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if multiple chord parts complete simultaneously and call `on_chord_part_return()` causing race conditions in chord completion tracking?",
+            "impact": "Chord callbacks fire multiple times or never fire, leading to duplicate work or permanently stalled workflows. Financial transactions could be duplicated.",
+            "domains": [
+              "Concurrency + State"
+            ],
+            "title": "Chord State Race with Concurrent Part Completion"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if malicious or buggy code generates millions of unique task IDs, filling the LRUCache beyond available memory?",
+            "impact": "OOM crash affecting all users, DoS. The `LRUCache(limit=cmax)` will hold references until limit reached, but if limit is set too high, memory exhaustion occurs before eviction.",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Result Cache Memory Exhaustion from Unbounded Keys"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if hundreds of clients poll results simultaneously with `ResultSet.iterate()`, each holding Redis connections open for extended periods?",
+            "impact": "New tasks cannot store results, system becomes unresponsive. The `subpolling_interval` means connections stay open longer during polling loops.",
+            "domains": [
+              "Database (Redis) + Resource Limits"
+            ],
+            "title": "Redis Connection Pool Exhaustion During Result Polling"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if storing result succeeds for some chain elements but fails for others during the complex chain iteration in `mark_as_failure()`?",
+            "impact": "Inconsistent task states across chain, some elements appear complete while others stuck. Workflow orchestration breaks.",
+            "domains": [
+              "State & Data + Error Paths"
+            ],
+            "title": "Partial Chain Failure Leaves Orphaned Tasks"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if a result expires from Redis/backend exactly when a client is polling for it, after checking it exists but before retrieving it?",
+            "impact": "Clients get confusing \"task not found\" errors for tasks they know completed. The `prepare_expires()` logic suggests expiration is configurable per result.",
+            "domains": [
+              "State & Data + External Dependencies"
+            ],
+            "title": "Result Expiration Race with Active Polling"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if exception serialization with `get_pickled_exception()` processes a crafted exception with deeply nested or circular references?",
+            "impact": "CPU/memory exhaustion during error handling, making failures worse. The `EXCEPTION_ABLE_CODECS` suggests pickle is used for exceptions.",
+            "domains": [
+              "Resource Limits + Input Validation"
+            ],
+            "title": "Serialization Bomb in Exception Handling"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if the `WeakValueDictionary` in `_pending_results` garbage collects result objects while chord completion is being checked?",
+            "impact": "Chord thinks parts are missing when they're actually complete, leading to timeout instead of proper completion. Intermittent failures.",
+            "domains": [
+              "State & Data + Concurrency"
+            ],
+            "title": "WeakValueDictionary Reference Collection During Chord"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if more than `MESSAGE_BUFFER_MAX` (8192) result messages arrive before being processed by the `BufferMap`?",
+            "impact": "Older result messages get silently dropped, causing clients to never receive completion notifications. Tasks appear to hang indefinitely.",
+            "domains": [
+              "Resource Limits + State"
+            ],
+            "title": "Buffer Overflow in Pending Messages"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if the `chain_elem` dictionary contains malicious data that gets unpacked into the reconstructed `Context` object via `chain_elem_ctx.update()`?",
+            "impact": "Could override critical context fields like task_id or group, causing results to be stored under wrong IDs or error callbacks to target wrong tasks.",
+            "domains": [
+              "Input Validation + State"
+            ],
+            "title": "Chain Element Context Reconstruction Poisoning"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if `get_exponential_backoff_interval()` is called with parameters that cause integer overflow when calculating sleep intervals?",
+            "impact": "Retry logic could sleep for negative time or wrap to very small intervals, causing retry storms instead of proper backoff.",
+            "domains": [
+              "Configuration + Error Paths"
+            ],
+            "title": "Exponential Backoff Interval Overflow"
+          }
+        ],
+        "matched_domains": [
+          "file_upload",
+          "database",
+          "storage"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 3,
+          "medium": 5,
+          "low": 0
+        }
+      },
+      "raw_response": "## \ud83d\udd34 CRITICAL (85%)\n\n**Chord State Race with Concurrent Part Completion**\n\n> What if multiple chord parts complete simultaneously and call `on_chord_part_return()` causing race conditions in chord completion tracking?\n\n- **Impact:** Chord callbacks fire multiple times or never fire, leading to duplicate work or permanently stalled workflows. Financial transactions could be duplicated.\n- **Domain:** Concurrency + State\n\n---\n\n## \ud83d\udd34 CRITICAL (80%)\n\n**Result Cache Memory Exhaustion from Unbounded Keys**\n\n> What if malicious or buggy code generates millions of unique task IDs, filling the LRUCache beyond available memory?\n\n- **Impact:** OOM crash affecting all users, DoS. The `LRUCache(limit=cmax)` will hold references until limit reached, but if limit is set too high, memory exhaustion occurs before eviction.\n- **Domain:** Resource Limits\n\n---\n\n## \ud83d\udfe0 HIGH (90%)\n\n**Redis Connection Pool Exhaustion During Result Polling**\n\n> What if hundreds of clients poll results simultaneously with `ResultSet.iterate()`, each holding Redis connections open for extended periods?\n\n- **Impact:** New tasks cannot store results, system becomes unresponsive. The `subpolling_interval` means connections stay open longer during polling loops.\n- **Domain:** Database (Redis) + Resource Limits\n\n---\n\n## \ud83d\udfe0 HIGH (85%)\n\n**Partial Chain Failure Leaves Orphaned Tasks**\n\n> What if storing result succeeds for some chain elements but fails for others during the complex chain iteration in `mark_as_failure()`?\n\n- **Impact:** Inconsistent task states across chain, some elements appear complete while others stuck. Workflow orchestration breaks.\n- **Domain:** State & Data + Error Paths\n\n---\n\n## \ud83d\udfe0 HIGH (80%)\n\n**Result Expiration Race with Active Polling**\n\n> What if a result expires from Redis/backend exactly when a client is polling for it, after checking it exists but before retrieving it?\n\n- **Impact:** Clients get confusing \"task not found\" errors for tasks they know completed. The `prepare_expires()` logic suggests expiration is configurable per result.\n- **Domain:** State & Data + External Dependencies\n\n---\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Serialization Bomb in Exception Handling**\n\n> What if exception serialization with `get_pickled_exception()` processes a crafted exception with deeply nested or circular references?\n\n- **Impact:** CPU/memory exhaustion during error handling, making failures worse. The `EXCEPTION_ABLE_CODECS` suggests pickle is used for exceptions.\n- **Domain:** Resource Limits + Input Validation\n\n---\n\n## \ud83d\udfe1 MEDIUM (80%)\n\n**WeakValueDictionary Reference Collection During Chord**\n\n> What if the `WeakValueDictionary` in `_pending_results` garbage collects result objects while chord completion is being checked?\n\n- **Impact:** Chord thinks parts are missing when they're actually complete, leading to timeout instead of proper completion. Intermittent failures.\n- **Domain:** State & Data + Concurrency\n\n---\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Buffer Overflow in Pending Messages**\n\n> What if more than `MESSAGE_BUFFER_MAX` (8192) result messages arrive before being processed by the `BufferMap`?\n\n- **Impact:** Older result messages get silently dropped, causing clients to never receive completion notifications. Tasks appear to hang indefinitely.\n- **Domain:** Resource Limits + State\n\n---\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Chain Element Context Reconstruction Poisoning**\n\n> What if the `chain_elem` dictionary contains malicious data that gets unpacked into the reconstructed `Context` object via `chain_elem_ctx.update()`?\n\n- **Impact:** Could override critical context fields like task_id or group, causing results to be stored under wrong IDs or error callbacks to target wrong tasks.\n- **Domain:** Input Validation + State\n\n---\n\n## \ud83d\udfe1 MEDIUM (70%)\n\n**Exponential Backoff Interval Overflow**\n\n> What if `get_exponential_backoff_interval()` is called with parameters that cause integer overflow when calculating sleep intervals?\n\n- **Impact:** Retry logic could sleep for negative time or wrap to very small intervals, causing retry storms instead of proper backoff.\n- **Domain:** Configuration + Error Paths"
+    },
+    {
+      "area": "Beat Scheduler",
+      "files": [
+        "celery/beat.py",
+        "celery/schedules.py"
+      ],
+      "result": {
+        "scope": "Periodic task scheduling with cron expressions - ScheduleEntry management, persistent shelve-backed scheduler, missed schedule recovery, clock skew handling, dynamic task arguments, distributed scheduler coordination",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if multiple scheduler instances try to write to the same shelve file simultaneously?",
+            "impact": "Complete loss of all scheduled tasks, scheduler fails to start, corrupted persistent state requires manual recovery. Business-critical periodic tasks (cleanups, reports, billing) stop running.",
+            "domains": [
+              "State & Data + Concurrency"
+            ],
+            "title": "Shelve Corruption Under Concurrent Access"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if system clock jumps backwards significantly (NTP correction, DST, manual adjustment) while tasks are in the heap?",
+            "impact": "All scheduled tasks fire immediately creating a thundering herd, or tasks never fire again because heap ordering breaks. Could overwhelm workers and downstream services.",
+            "domains": [
+              "Infrastructure + State & Data"
+            ],
+            "title": "Clock Skew Cascade"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if BeatLazyFunc or dynamic task arguments contain objects that cause exponential memory growth during pickle/unpickle?",
+            "impact": "Memory exhaustion crashes scheduler, taking down all periodic tasks. Malicious or buggy lazy functions could DoS the entire system.",
+            "domains": [
+              "Resource Limits + Input Validation"
+            ],
+            "title": "Pickle Bomb in Dynamic Arguments"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if dbm file becomes locked by a crashed process that never releases it?",
+            "impact": "Scheduler hangs on shelve access, all periodic tasks stop. Requires manual intervention to remove lock files and restart.",
+            "domains": [
+              "External Dependencies + Error Paths"
+            ],
+            "title": "DBM Lock Starvation"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if the scheduler crashes after populate_heap() but before sync, then restarts with stale last_run_at times in shelve?",
+            "impact": "Tasks either fire too frequently (overloading workers) or skip scheduled runs entirely. Financial/compliance tasks missing their windows.",
+            "domains": [
+              "State & Data + Error Paths"
+            ],
+            "title": "Heap Desync from Missed Recovery"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if server timezone changes but shelve contains datetime objects with old timezone assumptions?",
+            "impact": "Cron schedules fire at wrong times, potentially missing maintenance windows or running during business hours when they shouldn't.",
+            "domains": [
+              "State & Data + Configuration"
+            ],
+            "title": "Timezone Drift in Persistent State"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if schedule configuration changes while update_from_dict() is iterating and modifying entries?",
+            "impact": "Some task updates lost, inconsistent schedule state where some tasks use old config and others use new. Could result in duplicate runs or missed executions.",
+            "domains": [
+              "Concurrency + State & Data"
+            ],
+            "title": "Entry Update Race During Reload"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if BeatLazyFunc evaluation raises exception during _evaluate_entry_kwargs() but gets caught by broad Exception handler in apply_entry()?",
+            "impact": "Tasks silently fail to send with wrong arguments, but scheduler continues thinking they succeeded. Debugging becomes nightmare as errors are logged but not propagated.",
+            "domains": [
+              "Error Paths + Input Validation"
+            ],
+            "title": "Lazy Function Exception Swallowing"
+          }
+        ],
+        "matched_domains": [
+          "infrastructure"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 8,
+          "critical": 2,
+          "high": 3,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "## Risk Analysis: Periodic Task Scheduler\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**Shelve Corruption Under Concurrent Access**\n\n> What if multiple scheduler instances try to write to the same shelve file simultaneously?\n\n- **Impact:** Complete loss of all scheduled tasks, scheduler fails to start, corrupted persistent state requires manual recovery. Business-critical periodic tasks (cleanups, reports, billing) stop running.\n- **Domain:** State & Data + Concurrency\n\n### \ud83d\udd34 CRITICAL (80%)\n\n**Clock Skew Cascade**\n\n> What if system clock jumps backwards significantly (NTP correction, DST, manual adjustment) while tasks are in the heap?\n\n- **Impact:** All scheduled tasks fire immediately creating a thundering herd, or tasks never fire again because heap ordering breaks. Could overwhelm workers and downstream services.\n- **Domain:** Infrastructure + State & Data\n\n### \ud83d\udfe0 HIGH (90%)\n\n**Pickle Bomb in Dynamic Arguments**\n\n> What if BeatLazyFunc or dynamic task arguments contain objects that cause exponential memory growth during pickle/unpickle?\n\n- **Impact:** Memory exhaustion crashes scheduler, taking down all periodic tasks. Malicious or buggy lazy functions could DoS the entire system.\n- **Domain:** Resource Limits + Input Validation\n\n### \ud83d\udfe0 HIGH (85%)\n\n**DBM Lock Starvation**\n\n> What if dbm file becomes locked by a crashed process that never releases it?\n\n- **Impact:** Scheduler hangs on shelve access, all periodic tasks stop. Requires manual intervention to remove lock files and restart.\n- **Domain:** External Dependencies + Error Paths\n\n### \ud83d\udfe0 HIGH (75%)\n\n**Heap Desync from Missed Recovery**\n\n> What if the scheduler crashes after populate_heap() but before sync, then restarts with stale last_run_at times in shelve?\n\n- **Impact:** Tasks either fire too frequently (overloading workers) or skip scheduled runs entirely. Financial/compliance tasks missing their windows.\n- **Domain:** State & Data + Error Paths\n\n### \ud83d\udfe1 MEDIUM (80%)\n\n**Timezone Drift in Persistent State**\n\n> What if server timezone changes but shelve contains datetime objects with old timezone assumptions?\n\n- **Impact:** Cron schedules fire at wrong times, potentially missing maintenance windows or running during business hours when they shouldn't.\n- **Domain:** State & Data + Configuration\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Entry Update Race During Reload**\n\n> What if schedule configuration changes while update_from_dict() is iterating and modifying entries?\n\n- **Impact:** Some task updates lost, inconsistent schedule state where some tasks use old config and others use new. Could result in duplicate runs or missed executions.\n- **Domain:** Concurrency + State & Data\n\n### \ud83d\udfe1 MEDIUM (70%)\n\n**Lazy Function Exception Swallowing**\n\n> What if BeatLazyFunc evaluation raises exception during _evaluate_entry_kwargs() but gets caught by broad Exception handler in apply_entry()?\n\n- **Impact:** Tasks silently fail to send with wrong arguments, but scheduler continues thinking they succeeded. Debugging becomes nightmare as errors are logged but not propagated.\n- **Domain:** Error Paths + Input Validation"
+    },
+    {
+      "area": "Worker Consumer & Connection",
+      "files": [
+        "celery/worker/consumer/consumer.py"
+      ],
+      "result": {
+        "scope": "Celery worker event loop consuming task messages from AMQP broker",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if multiple workers simultaneously detect broker failure and all retry connections with exponential backoff reset?",
+            "impact": "Thundering herd overwhelms recovering broker, cascading failures across worker fleet",
+            "domains": [
+              "Infrastructure + Concurrency"
+            ],
+            "title": "AMQP Connection Storm During Broker Failover"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if worker is executing CPU-intensive task longer than broker_heartbeat interval and broker declares connection dead?",
+            "impact": "Connection severed mid-task, duplicate task execution when redelivered, potential data corruption",
+            "domains": [
+              "Infrastructure + State"
+            ],
+            "title": "Heartbeat Timeout During Long Task Execution"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if _update_prefetch_count() gets called repeatedly during rapid autoscaling events?",
+            "impact": "Worker requests massive message batch from broker, memory exhaustion",
+            "domains": [
+              "Resource Limits + Concurrency"
+            ],
+            "title": "Prefetch Count Explosion After Pool Resize"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if two tasks of same type check task_buckets simultaneously when bucket is at capacity=1?",
+            "impact": "Both tasks proceed despite rate limit, downstream API overwhelmed",
+            "domains": [
+              "Concurrency + External Dependencies"
+            ],
+            "title": "Rate Limit Token Bucket Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if network partition causes worker discovery gossip to fragment into isolated groups?",
+            "impact": "Tasks routed to unreachable workers, work distribution imbalance",
+            "domains": [
+              "Infrastructure + State"
+            ],
+            "title": "Gossip Protocol Split Brain"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if broker_connection_retry_attempt counter resets on any successful operation?",
+            "impact": "Aggressive retry pattern during partial broker issues",
+            "domains": [
+              "External Dependencies"
+            ],
+            "title": "Connection Retry Backoff Reset Bug"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if qos.increment_eventually() is called but actual broker QoS update lags?",
+            "impact": "Worker overwhelmed with messages beyond processing capacity",
+            "domains": [
+              "Resource Limits + External Dependencies"
+            ],
+            "title": "QoS Update Lag During High Message Volume"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if task definition changes but self.strategies dict retains old cached strategy objects?",
+            "impact": "Wrong rate limits applied, messages routed incorrectly",
+            "domains": [
+              "State + Configuration"
+            ],
+            "title": "Task Strategy Cache Staleness"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if hub is None and _pending_operations list grows unbounded?",
+            "impact": "Memory leak, eventually OOM crash",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Pending Operations Queue Overflow"
+          },
+          {
+            "severity": "LOW",
+            "confidence": 85,
+            "scenario": "What if worker crashes and OS immediately reuses PID?",
+            "impact": "Monitoring confusion, potential message delivery to wrong process",
+            "domains": [
+              "Infrastructure"
+            ],
+            "title": "PID Reuse After Worker Restart"
+          }
+        ],
+        "matched_domains": [
+          "database",
+          "infrastructure"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 3,
+          "medium": 4,
+          "low": 1
+        }
+      }
+    },
+    {
+      "area": "Canvas Workflows",
+      "files": [
+        "celery/canvas.py"
+      ],
+      "result": {
+        "scope": "Celery task composition primitives",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if chord body executes before all group tasks complete due to message broker reordering?",
+            "impact": "Chord callback receives incomplete results, corrupts downstream state",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Chord Result Aggregation Race Condition"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if deeply nested workflow construction causes exponential memory growth?",
+            "impact": "OOM crash during workflow definition",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Deep Graph Memory Exhaustion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if modifying _IMMUTABLE_OPTIONS in deeply nested signatures breaks parent task completion tracking?",
+            "impact": "Parent workflows never complete, resources leak",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Signature Immutability Violation in Nested Workflows"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if _stamp_regen_task is called on the same generator-based group multiple times?",
+            "impact": "Second execution has no tasks, silent data loss",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Generator Exhaustion in Group Tasks"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if _merge_dictionaries processes circular references causing infinite recursion?",
+            "impact": "Stack overflow crash during workflow stamping",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Recursive Dictionary Merge Stack Overflow"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if a task in the middle of a chain returns None?",
+            "impact": "Chain execution stops silently",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Chain Result Propagation Failure"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if maybe_unroll_group calls __length_hint__() on a generator that yields different counts?",
+            "impact": "Group treated as single task when it contains multiple",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Group Size Calculation Race"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if chord body signature serializes to massive JSON exceeding broker payload limits?",
+            "impact": "Chord creation succeeds but execution fails",
+            "domains": [
+              "External Dependencies"
+            ],
+            "title": "Chord Callback Serialization Explosion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if the same StampingVisitor instance is reused across concurrent workflow stampings?",
+            "impact": "Workflows receive headers intended for other workflows",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Stamping Visitor State Pollution"
+          },
+          {
+            "severity": "LOW",
+            "confidence": 85,
+            "scenario": "What if Signature.register_type() is called repeatedly with dynamically generated class names?",
+            "impact": "Memory grows over time in long-running processes",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Type Registration Memory Leak"
+          }
+        ],
+        "matched_domains": [
+          "file_upload"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 3,
+          "medium": 4,
+          "low": 1
+        }
+      }
+    },
+    {
+      "area": "AMQP & Task Routing",
+      "files": [
+        "celery/app/amqp.py",
+        "celery/app/routes.py"
+      ],
+      "result": {
+        "scope": "AMQP message broker integration via Kombu - queue/exchange declarations, message construction with headers/properties, task routing rules, connection pooling, message body encoding, delivery guarantees",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if the connection pool gets exhausted during broker reconnections while existing connections are stuck in half-open TCP states?",
+            "impact": "All message publishing/consuming halts, workers can't receive tasks, complete application freeze until manual restart",
+            "domains": [
+              "External Dependencies + Resource Limits"
+            ],
+            "title": "Connection Pool Starvation During Broker Reconnection"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if queue names from user input contain special characters that get interpreted as queue arguments (e.g., \"user_queue;x-message-ttl=1\")?",
+            "impact": "Arbitrary queue configuration, potential message deletion via TTL manipulation, resource exhaustion via memory limits",
+            "domains": [
+              "Input Validation"
+            ],
+            "title": "Queue Argument Injection via Dynamic Queue Names"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if producers and consumers use different encoding assumptions (UTF-8 vs Latin-1) causing `utf8dict()` to fail on legitimate international characters?",
+            "impact": "Silent data corruption, messages dropped, tasks fail with encoding errors in production",
+            "domains": [
+              "Universal - Input Validation"
+            ],
+            "title": "Message Body Encoding Mismatch in Heterogeneous Systems"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if dynamically generated routing keys exceed RabbitMQ's 255-byte limit, especially with UTF-8 characters counting as multiple bytes?",
+            "impact": "Messages silently dropped or routed incorrectly, debugging nightmare as failures appear random",
+            "domains": [
+              "External Dependencies"
+            ],
+            "title": "Routing Key Length Overflow in RabbitMQ"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if multiple workers simultaneously try to declare the same missing queue with `create_missing=True`, creating exchanges with different types?",
+            "impact": "Broker error, some workers fail to start, message routing breaks for affected queues",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Queue Declaration Race Condition with Auto-Created Exchanges"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if `WeakValueDictionary.aliases` gets garbage collected while queue objects are still referenced elsewhere, breaking alias lookups?",
+            "impact": "Queue resolution fails intermittently, tasks routed to wrong queues or dropped",
+            "domains": [
+              "Universal - State & Data"
+            ],
+            "title": "Weak Reference Cleanup During High Queue Turnover"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if `max_priority` or queue-specific priority values exceed broker limits (255 for RabbitMQ) or cause integer overflow?",
+            "impact": "Queue declaration fails, workers can't start, priority ordering becomes unpredictable",
+            "domains": [
+              "Universal - Resource Limits"
+            ],
+            "title": "Integer Overflow in Priority Values"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if the cached `_rtable` isn't invalidated when queue configuration changes at runtime, causing messages to use old routing rules?",
+            "impact": "Messages delivered to wrong queues, some tasks never processed, silent routing failures",
+            "domains": [
+              "Universal - State & Data"
+            ],
+            "title": "Stale Routing Table After Configuration Changes"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if `create_missing_queue_exchange_type` contains an invalid exchange type that's only validated at declaration time, not configuration time?",
+            "impact": "Runtime failures when queues are auto-created, worker startup delays, queue creation storms during recovery",
+            "domains": [
+              "Universal - Configuration"
+            ],
+            "title": "Exchange Type Validation Bypass"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if `task_protocols` dictionary gets modified at runtime or task_protocol config gets changed to an unsupported version during message processing?",
+            "impact": "Message serialization fails, tasks processed with wrong protocol causing data corruption",
+            "domains": [
+              "Universal - Configuration"
+            ],
+            "title": "Task Protocol Version Downgrade Attack"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if producer operations fail after acquiring a connection from the pool but before returning it, gradually leaking connections?",
+            "impact": "Connection pool exhaustion over time, eventual inability to publish messages, requires restart",
+            "domains": [
+              "Universal - Error Paths + Resource Limits"
+            ],
+            "title": "Connection Pool Leak Through Exception Paths"
+          }
+        ],
+        "matched_domains": [
+          "database",
+          "api"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 11,
+          "critical": 2,
+          "high": 4,
+          "medium": 5,
+          "low": 0
+        }
+      },
+      "raw_response": "## Risk Analysis: AMQP Message Broker Integration via Kombu\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**Connection Pool Starvation During Broker Reconnection**\n\n> What if the connection pool gets exhausted during broker reconnections while existing connections are stuck in half-open TCP states?\n\n- **Impact:** All message publishing/consuming halts, workers can't receive tasks, complete application freeze until manual restart\n- **Domain:** External Dependencies + Resource Limits\n\n### \ud83d\udd34 CRITICAL (90%)\n\n**Queue Argument Injection via Dynamic Queue Names**\n\n> What if queue names from user input contain special characters that get interpreted as queue arguments (e.g., \"user_queue;x-message-ttl=1\")?\n\n- **Impact:** Arbitrary queue configuration, potential message deletion via TTL manipulation, resource exhaustion via memory limits\n- **Domain:** Input Validation\n\n### \ud83d\udfe0 HIGH (80%)\n\n**Message Body Encoding Mismatch in Heterogeneous Systems**\n\n> What if producers and consumers use different encoding assumptions (UTF-8 vs Latin-1) causing `utf8dict()` to fail on legitimate international characters?\n\n- **Impact:** Silent data corruption, messages dropped, tasks fail with encoding errors in production\n- **Domain:** Universal - Input Validation\n\n### \ud83d\udfe0 HIGH (75%)\n\n**Routing Key Length Overflow in RabbitMQ**\n\n> What if dynamically generated routing keys exceed RabbitMQ's 255-byte limit, especially with UTF-8 characters counting as multiple bytes?\n\n- **Impact:** Messages silently dropped or routed incorrectly, debugging nightmare as failures appear random\n- **Domain:** External Dependencies\n\n### \ud83d\udfe0 HIGH (85%)\n\n**Queue Declaration Race Condition with Auto-Created Exchanges**\n\n> What if multiple workers simultaneously try to declare the same missing queue with `create_missing=True`, creating exchanges with different types?\n\n- **Impact:** Broker error, some workers fail to start, message routing breaks for affected queues\n- **Domain:** Concurrency\n\n### \ud83d\udfe0 HIGH (80%)\n\n**Weak Reference Cleanup During High Queue Turnover**\n\n> What if `WeakValueDictionary.aliases` gets garbage collected while queue objects are still referenced elsewhere, breaking alias lookups?\n\n- **Impact:** Queue resolution fails intermittently, tasks routed to wrong queues or dropped\n- **Domain:** Universal - State & Data\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Integer Overflow in Priority Values**\n\n> What if `max_priority` or queue-specific priority values exceed broker limits (255 for RabbitMQ) or cause integer overflow?\n\n- **Impact:** Queue declaration fails, workers can't start, priority ordering becomes unpredictable\n- **Domain:** Universal - Resource Limits\n\n### \ud83d\udfe1 MEDIUM (85%)\n\n**Stale Routing Table After Configuration Changes**\n\n> What if the cached `_rtable` isn't invalidated when queue configuration changes at runtime, causing messages to use old routing rules?\n\n- **Impact:** Messages delivered to wrong queues, some tasks never processed, silent routing failures\n- **Domain:** Universal - State & Data\n\n### \ud83d\udfe1 MEDIUM (70%)\n\n**Exchange Type Validation Bypass**\n\n> What if `create_missing_queue_exchange_type` contains an invalid exchange type that's only validated at declaration time, not configuration time?\n\n- **Impact:** Runtime failures when queues are auto-created, worker startup delays, queue creation storms during recovery\n- **Domain:** Universal - Configuration\n\n### \ud83d\udfe1 MEDIUM (80%)\n\n**Task Protocol Version Downgrade Attack**\n\n> What if `task_protocols` dictionary gets modified at runtime or task_protocol config gets changed to an unsupported version during message processing?\n\n- **Impact:** Message serialization fails, tasks processed with wrong protocol causing data corruption\n- **Domain:** Universal - Configuration\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Connection Pool Leak Through Exception Paths**\n\n> What if producer operations fail after acquiring a connection from the pool but before returning it, gradually leaking connections?\n\n- **Impact:** Connection pool exhaustion over time, eventual inability to publish messages, requires restart\n- **Domain:** Universal - Error Paths + Resource Limits"
+    }
+  ]
+}

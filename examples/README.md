@@ -163,7 +163,7 @@ gremlin review "auth" --context @src/auth/login.ts
 
 ## Pattern Coverage
 
-Gremlin includes **93 curated patterns** across 11 domains:
+Gremlin includes **107 curated patterns** across 14 domains:
 
 - **auth** (12 patterns): Authentication, sessions, tokens
 - **payments** (8 patterns): Checkout, billing, refunds
