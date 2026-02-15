@@ -1,4 +1,4 @@
-"""Gremlin CLI - Exploratory QA Agent."""
+"""Gremlin CLI - Pre-Ship Risk Critic."""
 
 import sys
 from pathlib import Path
@@ -24,7 +24,7 @@ from gremlin.output.renderer import render_json, render_markdown, render_rich
 
 app = typer.Typer(
     name="gremlin",
-    help="Exploratory QA agent that surfaces risk scenarios",
+    help="AI critic that surfaces breaking risk scenarios before they reach production",
     add_completion=False,
 )
 console = Console()
@@ -83,7 +83,7 @@ def main(
         help="Show version and exit",
     ),
 ) -> None:
-    """Gremlin - Exploratory QA Agent.
+    """Gremlin - Pre-Ship Risk Critic.
 
     Surfaces risk scenarios using curated patterns + LLM reasoning.
     """

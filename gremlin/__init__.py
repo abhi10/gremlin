@@ -1,4 +1,4 @@
-"""Gremlin - Exploratory QA Agent."""
+"""Gremlin - Pre-Ship Risk Critic."""
 
 __version__ = "0.2.0"
 
