@@ -56,7 +56,7 @@ domain_specific:
 
 1. **Keywords trigger domains** - When user's scope contains any keyword, that domain's patterns are included
 2. **Universal patterns always apply** - Use for cross-cutting concerns
-3. **Patterns merge, don't replace** - Your patterns add to built-in patterns (93+)
+3. **Patterns merge, don't replace** - Your patterns add to built-in patterns (107+)
 4. **Duplicates are auto-removed** - Safe to overlap with built-in patterns
 
 ---
@@ -155,7 +155,7 @@ domain_specific:
 
 Patterns are loaded and merged in this order:
 
-1. **Built-in patterns** (`patterns/breaking.yaml`) - 93 patterns
+1. **Built-in patterns** (`patterns/breaking.yaml`) - 107 patterns
 2. **Incident patterns** (`patterns/incidents/*.yaml`) - From `gremlin learn`
 3. **Project patterns** (`.gremlin/patterns.yaml`) - Auto-loaded
 4. **Custom patterns** (`--patterns @file.yaml`) - Explicit override

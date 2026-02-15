@@ -129,13 +129,15 @@ domain_specific:
       - "What if prod and pre-prod have different feature sets?"
 
   infrastructure:
-    keywords: [infrastructure, management, server, restart, disk, memory, latency, network, cert, ssl, tls, git, repository, hook]
+    keywords: [infrastructure, management, server, restart, disk, memory, latency, network, cert, ssl, tls, git, repository, hook, certificate]
     patterns:
       - "What if service restarts and gets hit by thundering herd of retries?"
       - "What if latency spike causes client timeout before server finishes?"
       - "What if disk fills up on database or temp directory?"
       - "What if SSL/TLS certificate expires?"
       - "What if repository contains malicious Git hooks (pre-commit, post-checkout) that execute arbitrary code? [CRITICAL - enables RCE with service privileges]"
+      - "What if certificate chain validation passes for expired intermediate certificates? [Allows MITM with expired cert chains]"
+      - "What if environment variables (SSL_CERT_FILE, SSL_CERT_DIR) are attacker-controlled and point to malicious CA bundles? [CRITICAL - complete TLS bypass]"
 
   dependencies:
     keywords: [sdk, library, package, version, upgrade, pip, npm, external, third-party]
@@ -159,6 +161,26 @@ domain_specific:
       - "What if feature works in one browser but not another?"
       - "What if desktop UI doesn't work well on mobile?"
       - "What if variables declared without var/let/const become implicit globals? [Causes cross-function pollution, memory leaks in SPAs]"
+
+  serialization:
+    keywords: [serialize, deserialize, pickle, json, marshal, msgpack, protobuf, yaml, encoding, decode, schema, coercion, parse, transform]
+    patterns:
+      - "What if untrusted data is deserialized using pickle/marshal, enabling arbitrary code execution? [CRITICAL - RCE via crafted payload]"
+      - "What if serialized payload contains separator/delimiter bytes that split parsing into ambiguous segments?"
+      - "What if type coercion silently converts data to wrong type during deserialization (string to int, null to empty)?"
+      - "What if schema version mismatch between serializer and deserializer causes silent data loss or corruption?"
+      - "What if compressed payload decompresses to gigabytes (zip bomb/gzip bomb), exhausting memory? [CRITICAL - OOM DoS]"
+      - "What if base64-encoded signature data has invalid padding that causes silent truncation during decode?"
+
+  distributed:
+    keywords: [worker, broker, queue, celery, redis, rabbitmq, kafka, pubsub, task, message, consumer, producer, event, scheduler, cron]
+    patterns:
+      - "What if all workers reconnect simultaneously after broker failure, creating thundering herd? [HIGH - cascading failure across worker fleet]"
+      - "What if long-running task exceeds broker heartbeat interval and connection is declared dead mid-execution?"
+      - "What if chord/fan-in callback fires before all parallel tasks complete due to message reordering?"
+      - "What if network partition causes worker discovery to fragment into isolated groups (split brain)?"
+      - "What if task is redelivered after timeout but original execution completes, causing duplicate processing?"
+      - "What if periodic scheduler misses execution windows due to clock skew between nodes?"
 
   search:
     keywords: [search, query, filter, index, elasticsearch, algolia, fulltext]

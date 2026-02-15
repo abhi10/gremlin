@@ -7,7 +7,7 @@
 Gremlin is a **pre-ship risk critic** (CLI + Python library) that answers: **"What could break?"**
 
 Feed it a feature spec, PR diff, or plain English — Gremlin critiques it for blind spots using:
-- **93 curated risk patterns** across 12 domains (payments, auth, infra, security, and more)
+- **107 curated risk patterns** across 14 domains (payments, auth, infra, serialization, distributed systems, and more)
 - **LLM reasoning** (applies patterns intelligently to your specific context)
 - **Structured output** (severity-ranked risk scenarios with confidence scores)
 
@@ -213,7 +213,7 @@ Gremlin's pattern-based approach achieves **90.7% tie rate** with baseline Claud
 | **Win/Tie Rate** | 98.1% | Combined wins + ties |
 | **Gremlin Wins** | 7.4% | Cases where patterns provide unique value |
 | **Claude Wins** | 1.9% | Minor category labeling differences |
-| **Pattern Count** | 93 | Universal + domain-specific patterns |
+| **Pattern Count** | 107 | Universal + domain-specific patterns |
 
 **Key Achievement**: 90% reduction in quality gaps (19% → 1.9%) through strategic pattern improvements.
 

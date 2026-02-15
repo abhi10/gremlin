@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Gremlin is an exploratory QA tool (CLI + Python library) that identifies risk scenarios in software features using:
-- 93 curated QA patterns (domain-specific "what if?" questions)
+- 107 curated QA patterns (domain-specific "what if?" questions)
 - Claude's reasoning (applies patterns intelligently to user-provided scope)
 - Rich terminal output (actionable risk scenarios)
 
@@ -166,7 +166,7 @@ The Gremlin project provides two complementary tools:
 ### Gremlin CLI Tool
 **Location**: `gremlin/` (Python package)
 **Purpose**: Feature-scope QA analysis from PRD/specification
-**Patterns**: 72 patterns in `patterns/breaking.yaml`
+**Patterns**: 107 patterns in `patterns/breaking.yaml`
 **Usage**: `gremlin review "checkout flow"`
 
 **When to use**:
@@ -219,7 +219,7 @@ The agent can optionally invoke the CLI for enhanced analysis:
 
 ## Important Files
 
-- `patterns/breaking.yaml`: 93 curated QA patterns organized by domain
+- `patterns/breaking.yaml`: 107 curated QA patterns organized by domain
 - `prompts/system.md`: System prompt defining Gremlin's persona and output format
 - `gremlin/api.py`: Programmatic API with `Gremlin`, `Risk`, and `AnalysisResult` classes
 - `gremlin/cli.py`: CLI entry point (thin wrapper around api.py)

@@ -1,0 +1,853 @@
+{
+  "target": "pydantic/pydantic",
+  "url": "https://github.com/pydantic/pydantic",
+  "date": "2026-02-14T18:55:01.044392",
+  "gremlin_version": "0.2.0",
+  "threshold": 70,
+  "depth": "deep",
+  "areas": [
+    {
+      "area": "Schema Generation & Type Coercion",
+      "files": [
+        "pydantic/_internal/_generate_schema.py"
+      ],
+      "result": {
+        "scope": "Schema generation from Python type annotations - type resolution, forward references, recursive schemas, generic type substitution, union discrimination, type coercion between Python and Rust validation core",
+        "risks": [],
+        "matched_domains": [],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 0,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        }
+      },
+      "raw_response": "## Risk Analysis: Python Type Schema Generation\n\n\ud83d\udd34 **CRITICAL** (85%)\n\n**Forward Reference Resolution Race Condition**\n\n> What if concurrent schema generation attempts resolve the same forward reference simultaneously, causing one to cache an incomplete resolution?\n\n- **Impact:** Schema corruption leading to validation failures or incorrect type coercion. Could manifest as intermittent production failures that are hard to reproduce.\n- **Domain:** Concurrency + State & Data\n\n\ud83d\udd34 **CRITICAL** (90%)\n\n**Recursive Schema Stack Overflow**\n\n> What if maliciously crafted or accidentally circular type annotations create unbounded recursion during schema generation?\n\n- **Impact:** Process crash, DoS. The code shows complex recursive type resolution without clear depth limits.\n- **Domain:** Resource Limits + Input Validation\n\n\ud83d\udfe0 **HIGH** (80%)\n\n**Generic Type Variable Substitution Corruption**\n\n> What if generic type substitution (`replace_types`) encounters nested generics where inner type variables shadow outer ones, causing incorrect schema generation?\n\n- **Impact:** Runtime type validation failures in production. Users pass valid data that gets rejected, or invalid data gets accepted.\n- **Domain:** State & Data\n\n\ud83d\udfe0 **HIGH** (85%)\n\n**Union Discriminator Field Missing at Runtime**\n\n> What if union discrimination logic generates schema expecting a discriminator field, but actual data lacks that field due to schema evolution or external API changes?\n\n- **Impact:** All union validation fails, breaking entire data processing pipelines that depend on polymorphic types.\n- **Domain:** External Dependencies + State & Data\n\n\ud83d\udfe0 **HIGH** (75%)\n\n**Forward Reference Import Failure**\n\n> What if forward reference resolution triggers imports of modules that have side effects or circular import dependencies at schema generation time?\n\n- **Impact:** Application startup failure or unexpected state mutations during what should be pure schema generation.\n- **Domain:** Configuration + External Dependencies\n\n\ud83d\udfe0 **HIGH** (80%)\n\n**Type Annotation String Eval Injection**\n\n> What if string-based type annotations contain crafted code that gets executed during `eval()` in forward reference resolution?\n\n- **Impact:** Code execution vulnerability if user-controlled type annotations are processed (e.g., dynamic model generation from API specs).\n- **Domain:** Input Validation\n\n\ud83d\udfe1 **MEDIUM** (90%)\n\n**Python-Rust Type Coercion Mismatch**\n\n> What if Python schema generation creates a schema that the Rust validation core interprets differently, especially for numeric types or datetime formats?\n\n- **Impact:** Silent data corruption where validation passes but wrong values are stored/returned.\n- **Domain:** External Dependencies\n\n\ud83d\udfe1 **MEDIUM** (75%)\n\n**Dataclass Field Collection During Class Mutation**\n\n> What if `collect_dataclass_fields()` runs while the dataclass is being modified by another thread (e.g., monkey patching or dynamic field addition)?\n\n- **Impact:** Inconsistent schema with some fields missing, leading to validation errors for valid data.\n- **Domain:** Concurrency + State & Data\n\n\ud83d\udfe1 **MEDIUM** (80%)\n\n**Memory Exhaustion from Complex Generic Expansion**\n\n> What if deeply nested generic types with multiple type parameters cause exponential memory growth during schema generation?\n\n- **Impact:** OOM crash during application startup when processing complex type hierarchies.\n- **Domain:** Resource Limits\n\n\ud83d\udfe1 **MEDIUM** (85%)\n\n**Decorator Field Name Validation Bypass**\n\n> What if `check_decorator_fields_exist()` validation is bypassed for inherited models, but the parent model's field structure changes, leaving orphaned decorators?\n\n- **Impact:** Validators/serializers silently not applied, causing data integrity issues.\n- **Domain:** State & Data + Configuration"
+    },
+    {
+      "area": "Validation Pipeline & Field Validators",
+      "files": [
+        "pydantic/_internal/_decorators.py",
+        "pydantic/functional_validators.py"
+      ],
+      "result": {
+        "scope": "Decorator-based validation system - @field_validator, @model_validator, before/after/wrap validators, validator ordering and chaining, info parameter propagation, re-validation on mutation",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if validators with identical priority execute in different orders across processes due to dict/set iteration randomization?",
+            "impact": "Inconsistent validation behavior between dev/prod environments, race conditions in validator chains where later validators assume earlier ones ran, silent data corruption when wrap validators execute out of expected sequence",
+            "domains": [
+              "State & Data",
+              "Configuration"
+            ],
+            "title": "Validator Ordering Chain Corruption"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if info parameter creates circular references between validator context and model instances during re-validation cycles?",
+            "impact": "Memory exhaustion as validator contexts accumulate in memory, garbage collection failures, eventual OOM crashes affecting all users",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Info Parameter Memory Leak via Circular References"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if wrap validator calls the wrapped function which triggers another validator that calls back to the original wrap validator?",
+            "impact": "Stack overflow crash, application DoS, validation system completely broken for affected models",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Wrap Validator Infinite Recursion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if field mutation triggers re-validation while another thread is mid-validation, causing validator state to be shared/corrupted?",
+            "impact": "Invalid data passing validation, validation errors on valid data, race conditions in multi-threaded applications",
+            "domains": [
+              "Concurrency",
+              "State & Data"
+            ],
+            "title": "Re-validation State Corruption on Mutation"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if a before validator throws an exception but the error handling doesn't properly clean up decorator proxy state, causing subsequent validators on other fields to malfunction?",
+            "impact": "Validation system enters corrupted state, other fields fail validation unexpectedly, difficult to debug cascading failures",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Validator Exception Breaks Chain"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 78,
+            "scenario": "What if field names tuple in FieldValidatorDecoratorInfo contains unbounded user-controlled data, and validators are dynamically created for large numbers of generated field names?",
+            "impact": "Memory exhaustion from storing massive field name tuples, performance degradation, potential DoS through crafted model definitions",
+            "domains": [
+              "Resource Limits",
+              "Input Validation"
+            ],
+            "title": "Dynamic Field Validator Memory Exhaustion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if PydanticDescriptorProxy.__get__ is called on an object that has another descriptor in the inheritance chain with the same __get__ logic?",
+            "impact": "Stack overflow in descriptor resolution, model instantiation failures, confusing error messages about descriptor chains",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Descriptor Proxy __get__ Recursion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if validator mode parameters ('before', 'after', 'wrap') are constructed from user input or configuration that gets sanitized incorrectly, leading to unexpected mode behavior?",
+            "impact": "Validators run in wrong order, validation logic bypassed, security rules applied incorrectly",
+            "domains": [
+              "Input Validation",
+              "Configuration"
+            ],
+            "title": "Validator Mode String Injection"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if the shim wrapper function gets applied multiple times during inheritance or decorator composition, creating nested function call overhead?",
+            "impact": "Performance degradation on every validation, potential stack depth issues with deeply nested inheritance, debugging difficulties with wrapped call stacks",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Shim Function Double-Wrapping"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 72,
+            "scenario": "What if validator cls_var_name collides with Python built-in attributes or descriptor names when using get_attribute_from_bases?",
+            "impact": "Validator functions overwrite essential class behavior, methods like __init__ or __new__ get replaced with validators, class becomes non-instantiable",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "ClassVar Name Collision"
+          }
+        ],
+        "matched_domains": [],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 4,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "## \ud83d\udd34 CRITICAL (85%)\n\n**Validator Ordering Chain Corruption**\n\n> What if validators with identical priority execute in different orders across processes due to dict/set iteration randomization?\n\n- **Impact:** Inconsistent validation behavior between dev/prod environments, race conditions in validator chains where later validators assume earlier ones ran, silent data corruption when wrap validators execute out of expected sequence\n- **Domain:** State & Data, Configuration\n\n## \ud83d\udd34 CRITICAL (80%)\n\n**Info Parameter Memory Leak via Circular References**\n\n> What if info parameter creates circular references between validator context and model instances during re-validation cycles?\n\n- **Impact:** Memory exhaustion as validator contexts accumulate in memory, garbage collection failures, eventual OOM crashes affecting all users\n- **Domain:** Resource Limits\n\n## \ud83d\udfe0 HIGH (90%)\n\n**Wrap Validator Infinite Recursion**\n\n> What if wrap validator calls the wrapped function which triggers another validator that calls back to the original wrap validator?\n\n- **Impact:** Stack overflow crash, application DoS, validation system completely broken for affected models\n- **Domain:** Error Paths\n\n## \ud83d\udfe0 HIGH (85%)\n\n**Re-validation State Corruption on Mutation**\n\n> What if field mutation triggers re-validation while another thread is mid-validation, causing validator state to be shared/corrupted?\n\n- **Impact:** Invalid data passing validation, validation errors on valid data, race conditions in multi-threaded applications\n- **Domain:** Concurrency, State & Data\n\n## \ud83d\udfe0 HIGH (80%)\n\n**Validator Exception Breaks Chain**\n\n> What if a before validator throws an exception but the error handling doesn't properly clean up decorator proxy state, causing subsequent validators on other fields to malfunction?\n\n- **Impact:** Validation system enters corrupted state, other fields fail validation unexpectedly, difficult to debug cascading failures\n- **Domain:** Error Paths\n\n## \ud83d\udfe0 HIGH (78%)\n\n**Dynamic Field Validator Memory Exhaustion**\n\n> What if field names tuple in FieldValidatorDecoratorInfo contains unbounded user-controlled data, and validators are dynamically created for large numbers of generated field names?\n\n- **Impact:** Memory exhaustion from storing massive field name tuples, performance degradation, potential DoS through crafted model definitions\n- **Domain:** Resource Limits, Input Validation\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Descriptor Proxy __get__ Recursion**\n\n> What if PydanticDescriptorProxy.__get__ is called on an object that has another descriptor in the inheritance chain with the same __get__ logic?\n\n- **Impact:** Stack overflow in descriptor resolution, model instantiation failures, confusing error messages about descriptor chains\n- **Domain:** Error Paths\n\n## \ud83d\udfe1 MEDIUM (80%)\n\n**Validator Mode String Injection**\n\n> What if validator mode parameters ('before', 'after', 'wrap') are constructed from user input or configuration that gets sanitized incorrectly, leading to unexpected mode behavior?\n\n- **Impact:** Validators run in wrong order, validation logic bypassed, security rules applied incorrectly\n- **Domain:** Input Validation, Configuration\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Shim Function Double-Wrapping**\n\n> What if the shim wrapper function gets applied multiple times during inheritance or decorator composition, creating nested function call overhead?\n\n- **Impact:** Performance degradation on every validation, potential stack depth issues with deeply nested inheritance, debugging difficulties with wrapped call stacks\n- **Domain:** Resource Limits\n\n## \ud83d\udfe1 MEDIUM (72%)\n\n**ClassVar Name Collision**\n\n> What if validator cls_var_name collides with Python built-in attributes or descriptor names when using get_attribute_from_bases?\n\n- **Impact:** Validator functions overwrite essential class behavior, methods like __init__ or __new__ get replaced with validators, class becomes non-instantiable\n- **Domain:** State & Data"
+    },
+    {
+      "area": "Generics & Type Parameterization",
+      "files": [
+        "pydantic/_internal/_generics.py"
+      ],
+      "result": {
+        "scope": "Generic model handling - type parameter substitution, LimitedDict cache management with weak references, recursive generic models, multiple inheritance with generics, cache invalidation and memory leaks",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if deeply nested recursive generic models exceed Python's default recursion limit during type parameter substitution?",
+            "impact": "Python crashes with RecursionError, bringing down the entire application. Happens during model creation/validation, not just edge cases.",
+            "domains": [
+              "State & Data / Resource Limits"
+            ],
+            "title": "Recursive Generic Model Stack Overflow"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if concurrent threads access `_GENERIC_TYPES_CACHE` while garbage collection removes weakly referenced models?",
+            "impact": "KeyError crashes during model creation, or worse - returning partially garbage-collected model instances that cause unpredictable behavior downstream.",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "WeakValueDictionary Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if the commented-out `DeepChainMap(_GENERIC_TYPES_CACHE, LimitedDict())` pattern still exists elsewhere and LimitedDict retains references to models that should be garbage collected?",
+            "impact": "Memory grows unbounded as generic model instances accumulate, eventually causing OOM. The comment suggests this was a known issue they tried to fix.",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "LimitedDict Memory Leak via Retention"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if `create_generic_submodel` generates duplicate global reference names when multiple threads create models with the same name simultaneously?",
+            "impact": "Models get overwritten in `sys.modules[created_model.__module__].__dict__`, breaking pickling and causing wrong model instances to be used. The `while` loop with `reference_name += '_'` isn't thread-safe.",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Global Reference Name Collision"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if `__pydantic_generic_metadata__` contains mismatched args/parameters lengths or invalid TypeVar instances during `replace_types`?",
+            "impact": "`zip(parameters, args)` creates wrong mappings or `dict(zip(...))` silently drops parameters, leading to incorrect type substitution and runtime type errors in validation.",
+            "domains": [
+              "Input Validation"
+            ],
+            "title": "Type Parameter Substitution with Malformed Metadata"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if `sys._getframe(depth)` fails in environments where frame introspection is disabled (PyPy, security-hardened Python)?",
+            "impact": "`_get_caller_frame_info` raises `AttributeError`, causing `create_generic_submodel` to skip global reference creation, breaking model pickling in production.",
+            "domains": [
+              "Configuration"
+            ],
+            "title": "Frame Inspection Failure in Restricted Environments"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if circular references exist in generic model metadata where model A references model B which references model A?",
+            "impact": "`iter_contained_typevars` recurses infinitely until stack overflow. Less likely than the recursive model case but still possible with complex inheritance chains.",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Infinite Loop in iter_contained_typevars"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if different generic type combinations produce identical `GenericTypesCacheKey` tuples due to hash collisions or type representation ambiguities?",
+            "impact": "Wrong cached model returned, causing validation to pass/fail incorrectly. Subtle bugs where `User[int]` returns cached `User[str]` model.",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Cache Key Collision with Complex Generic Types"
+          }
+        ],
+        "matched_domains": [
+          "api",
+          "infrastructure"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 8,
+          "critical": 2,
+          "high": 3,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "## \ud83d\udd34 CRITICAL (85%)\n\n**Recursive Generic Model Stack Overflow**\n\n> What if deeply nested recursive generic models exceed Python's default recursion limit during type parameter substitution?\n\n- **Impact:** Python crashes with RecursionError, bringing down the entire application. Happens during model creation/validation, not just edge cases.\n- **Domain:** State & Data / Resource Limits\n\n---\n\n## \ud83d\udd34 CRITICAL (80%)\n\n**WeakValueDictionary Race Condition**\n\n> What if concurrent threads access `_GENERIC_TYPES_CACHE` while garbage collection removes weakly referenced models?\n\n- **Impact:** KeyError crashes during model creation, or worse - returning partially garbage-collected model instances that cause unpredictable behavior downstream.\n- **Domain:** Concurrency\n\n---\n\n## \ud83d\udfe0 HIGH (90%)\n\n**LimitedDict Memory Leak via Retention**\n\n> What if the commented-out `DeepChainMap(_GENERIC_TYPES_CACHE, LimitedDict())` pattern still exists elsewhere and LimitedDict retains references to models that should be garbage collected?\n\n- **Impact:** Memory grows unbounded as generic model instances accumulate, eventually causing OOM. The comment suggests this was a known issue they tried to fix.\n- **Domain:** Resource Limits\n\n---\n\n## \ud83d\udfe0 HIGH (75%)\n\n**Global Reference Name Collision**\n\n> What if `create_generic_submodel` generates duplicate global reference names when multiple threads create models with the same name simultaneously?\n\n- **Impact:** Models get overwritten in `sys.modules[created_model.__module__].__dict__`, breaking pickling and causing wrong model instances to be used. The `while` loop with `reference_name += '_'` isn't thread-safe.\n- **Domain:** Concurrency\n\n---\n\n## \ud83d\udfe0 HIGH (80%)\n\n**Type Parameter Substitution with Malformed Metadata**\n\n> What if `__pydantic_generic_metadata__` contains mismatched args/parameters lengths or invalid TypeVar instances during `replace_types`?\n\n- **Impact:** `zip(parameters, args)` creates wrong mappings or `dict(zip(...))` silently drops parameters, leading to incorrect type substitution and runtime type errors in validation.\n- **Domain:** Input Validation\n\n---\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Frame Inspection Failure in Restricted Environments**\n\n> What if `sys._getframe(depth)` fails in environments where frame introspection is disabled (PyPy, security-hardened Python)?\n\n- **Impact:** `_get_caller_frame_info` raises `AttributeError`, causing `create_generic_submodel` to skip global reference creation, breaking model pickling in production.\n- **Domain:** Configuration\n\n---\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Infinite Loop in iter_contained_typevars**\n\n> What if circular references exist in generic model metadata where model A references model B which references model A?\n\n- **Impact:** `iter_contained_typevars` recurses infinitely until stack overflow. Less likely than the recursive model case but still possible with complex inheritance chains.\n- **Domain:** State & Data\n\n---\n\n## \ud83d\udfe1 MEDIUM (70%)\n\n**Cache Key Collision with Complex Generic Types**\n\n> What if different generic type combinations produce identical `GenericTypesCacheKey` tuples due to hash collisions or type representation ambiguities?\n\n- **Impact:** Wrong cached model returned, causing validation to pass/fail incorrectly. Subtle bugs where `User[int]` returns cached `User[str]` model.\n- **Domain:** State & Data"
+    },
+    {
+      "area": "Serialization & JSON Schema",
+      "files": [
+        "pydantic/json_schema.py"
+      ],
+      "result": {
+        "scope": "JSON schema generation from core schemas - schema reference resolution, recursive handling, discriminated union schemas, mode selection (python vs json), OpenAPI compatibility",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if circular schema references create infinite recursion during schema generation?",
+            "impact": "Stack overflow crashes, application DoS, especially with complex nested models or self-referencing schemas",
+            "domains": [
+              "universal.concurrency + universal.resource_limits"
+            ],
+            "title": "Infinite Recursion in Schema References"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if deeply nested or highly branched schema structures cause exponential memory growth during the 100-iteration fixed-point resolution loop?",
+            "impact": "OOM crashes affecting all users, server becomes unresponsive during schema generation",
+            "domains": [
+              "universal.resource_limits"
+            ],
+            "title": "Memory Exhaustion from Unbounded Definition Expansion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if the `_DefinitionsRemapping.from_prioritized_choices` produces name collisions where different schemas get mapped to the same DefsRef, breaking schema validation?",
+            "impact": "Schema validation failures in production, incorrect API contract enforcement, data corruption from accepting invalid inputs",
+            "domains": [
+              "universal.state_data"
+            ],
+            "title": "Schema Reference Collision After Simplification"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if validation mode schemas are used for serialization or vice versa, causing computed fields to appear in validation schemas or be missing from serialization schemas?",
+            "impact": "API contract violations, client integration failures, computed fields incorrectly required during validation",
+            "domains": [
+              "universal.state_data"
+            ],
+            "title": "Mode Selection Mismatch Breaking Schema Contracts"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if discriminated union schemas with complex inheritance hierarchies generate JSON schemas that are valid JSON Schema but break OpenAPI spec parsers?",
+            "impact": "API documentation tools fail, client SDK generation breaks, integration partner tooling incompatible",
+            "domains": [
+              "universal.external_dependencies"
+            ],
+            "title": "OpenAPI Compatibility Breaking with Edge Case Schemas"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if model class names contain path traversal characters (../, ..\\) or URL-unsafe characters that break the DEFAULT_REF_TEMPLATE formatting?",
+            "impact": "Malformed $ref URLs, schema reference resolution failures, potential path traversal if references are used for file operations",
+            "domains": [
+              "universal.input_validation"
+            ],
+            "title": "Reference Template Injection via Model Names"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if the 100-iteration limit in `from_prioritized_choices` is reached without convergence, causing the PydanticInvalidForJsonSchema exception?",
+            "impact": "Schema generation fails for complex models, application startup failures if schemas are generated at boot time",
+            "domains": [
+              "universal.resource_limits"
+            ],
+            "title": "Fixed-Point Resolution Timeout"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if `deepcopy(definitions)` in the fixed-point resolution creates memory pressure spikes for large schema definition dictionaries?",
+            "impact": "Temporary memory exhaustion, GC pauses, potential OOM on memory-constrained systems",
+            "domains": [
+              "universal.resource_limits"
+            ],
+            "title": "Deep Copy Memory Spike"
+          }
+        ],
+        "matched_domains": [
+          "api",
+          "frontend"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 8,
+          "critical": 2,
+          "high": 3,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "## \ud83d\udd34 CRITICAL (85%)\n\n**Infinite Recursion in Schema References**\n\n> What if circular schema references create infinite recursion during schema generation?\n\n- **Impact:** Stack overflow crashes, application DoS, especially with complex nested models or self-referencing schemas\n- **Domain:** universal.concurrency + universal.resource_limits\n\n## \ud83d\udd34 CRITICAL (80%)\n\n**Memory Exhaustion from Unbounded Definition Expansion**\n\n> What if deeply nested or highly branched schema structures cause exponential memory growth during the 100-iteration fixed-point resolution loop?\n\n- **Impact:** OOM crashes affecting all users, server becomes unresponsive during schema generation\n- **Domain:** universal.resource_limits\n\n## \ud83d\udfe0 HIGH (90%)\n\n**Schema Reference Collision After Simplification**\n\n> What if the `_DefinitionsRemapping.from_prioritized_choices` produces name collisions where different schemas get mapped to the same DefsRef, breaking schema validation?\n\n- **Impact:** Schema validation failures in production, incorrect API contract enforcement, data corruption from accepting invalid inputs\n- **Domain:** universal.state_data\n\n## \ud83d\udfe0 HIGH (85%)\n\n**Mode Selection Mismatch Breaking Schema Contracts**\n\n> What if validation mode schemas are used for serialization or vice versa, causing computed fields to appear in validation schemas or be missing from serialization schemas?\n\n- **Impact:** API contract violations, client integration failures, computed fields incorrectly required during validation\n- **Domain:** universal.state_data\n\n## \ud83d\udfe0 HIGH (75%)\n\n**OpenAPI Compatibility Breaking with Edge Case Schemas**\n\n> What if discriminated union schemas with complex inheritance hierarchies generate JSON schemas that are valid JSON Schema but break OpenAPI spec parsers?\n\n- **Impact:** API documentation tools fail, client SDK generation breaks, integration partner tooling incompatible\n- **Domain:** universal.external_dependencies\n\n## \ud83d\udfe1 MEDIUM (80%)\n\n**Reference Template Injection via Model Names**\n\n> What if model class names contain path traversal characters (../, ..\\) or URL-unsafe characters that break the DEFAULT_REF_TEMPLATE formatting?\n\n- **Impact:** Malformed $ref URLs, schema reference resolution failures, potential path traversal if references are used for file operations\n- **Domain:** universal.input_validation\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Fixed-Point Resolution Timeout**\n\n> What if the 100-iteration limit in `from_prioritized_choices` is reached without convergence, causing the PydanticInvalidForJsonSchema exception?\n\n- **Impact:** Schema generation fails for complex models, application startup failures if schemas are generated at boot time\n- **Domain:** universal.resource_limits\n\n## \ud83d\udfe1 MEDIUM (70%)\n\n**Deep Copy Memory Spike**\n\n> What if `deepcopy(definitions)` in the fixed-point resolution creates memory pressure spikes for large schema definition dictionaries?\n\n- **Impact:** Temporary memory exhaustion, GC pauses, potential OOM on memory-constrained systems\n- **Domain:** universal.resource_limits"
+    },
+    {
+      "area": "Model Construction & Metaclass",
+      "files": [
+        "pydantic/_internal/_model_construction.py"
+      ],
+      "result": {
+        "scope": "Metaclass-based model creation - field discovery, validation decorator collection, schema caching, configuration application, __init__ signature generation, descriptor protocol, MRO, field inheritance",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if multiple inheritance creates diamond patterns where the same field is defined differently in different base classes, causing unpredictable field resolution?",
+            "impact": "Silent data corruption as wrong field validators/types get applied, breaking business logic with no obvious error",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "MRO Diamond Problem with Field Inheritance"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if circular model references during `GenerateSchema` creation cause infinite recursion in the metaclass `__new__` method?",
+            "impact": "Stack overflow crash during import time, making the entire application unloadable",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Metaclass Recursion During Schema Generation"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if `eval_type_backport` tries to resolve forward references before all classes in the module are fully defined, causing NameError during metaclass creation?",
+            "impact": "Import-time crashes in complex model hierarchies, breaking application startup",
+            "domains": [
+              "Configuration"
+            ],
+            "title": "Annotation Evaluation Timing with Forward References"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if user-defined `__set__`/`__get__` methods on a model class interfere with Pydantic's `PydanticDescriptorProxy`, causing attribute access to bypass validation?",
+            "impact": "Validation bypassed silently, allowing invalid data into the system",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Descriptor Protocol Collision with User Attributes"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if the `@cache` decorator on schema generation doesn't account for different generic type parameters, causing one generic model variant to use another's cached schema?",
+            "impact": "Wrong validation rules applied to data, type safety violated",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Schema Cache Poisoning Across Model Variants"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if the `weakref` usage in decorator collection creates circular references between model classes and their metadata that aren't properly garbage collected?",
+            "impact": "Memory leak in long-running applications that dynamically create many model classes",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Memory Leak via Weakref Circular References"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if `get_model_typevars_map` fails to correctly resolve type variables when a model inherits from multiple generic bases with conflicting type parameter names?",
+            "impact": "Wrong types inferred for fields, runtime type errors in production",
+            "domains": [
+              "Input Validation"
+            ],
+            "title": "Generic Parameter Resolution with Complex Inheritance"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if `__private_attributes__` from different base classes contain keys with the same name but different `ModelPrivateAttr` configurations?",
+            "impact": "Private attribute behavior becomes unpredictable, breaking encapsulation assumptions",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Private Attribute Namespace Collision"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if `replace_wrapped_methods=True` in `DecoratorInfos.build` creates deeply nested wrapper functions that exceed Python's recursion limit during method calls?",
+            "impact": "Runtime crashes when calling heavily decorated methods",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Stack Overflow from Nested Decorator Wrapping"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if `_create_model_module` parameter causes the metaclass to execute in the wrong module context, making relative imports and `__name__` references resolve incorrectly?",
+            "impact": "Model creation fails in dynamic scenarios like testing or code generation",
+            "domains": [
+              "Configuration"
+            ],
+            "title": "Import-Time Side Effects in Dynamic Creation"
+          }
+        ],
+        "matched_domains": [
+          "deployment"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 4,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "## \ud83d\udd34 CRITICAL (85%)\n\n**MRO Diamond Problem with Field Inheritance**\n\n> What if multiple inheritance creates diamond patterns where the same field is defined differently in different base classes, causing unpredictable field resolution?\n\n- **Impact:** Silent data corruption as wrong field validators/types get applied, breaking business logic with no obvious error\n- **Domain:** State & Data\n\n## \ud83d\udd34 CRITICAL (80%)\n\n**Metaclass Recursion During Schema Generation**\n\n> What if circular model references during `GenerateSchema` creation cause infinite recursion in the metaclass `__new__` method?\n\n- **Impact:** Stack overflow crash during import time, making the entire application unloadable\n- **Domain:** Resource Limits\n\n## \ud83d\udfe0 HIGH (90%)\n\n**Annotation Evaluation Timing with Forward References**\n\n> What if `eval_type_backport` tries to resolve forward references before all classes in the module are fully defined, causing NameError during metaclass creation?\n\n- **Impact:** Import-time crashes in complex model hierarchies, breaking application startup\n- **Domain:** Configuration\n\n## \ud83d\udfe0 HIGH (85%)\n\n**Descriptor Protocol Collision with User Attributes**\n\n> What if user-defined `__set__`/`__get__` methods on a model class interfere with Pydantic's `PydanticDescriptorProxy`, causing attribute access to bypass validation?\n\n- **Impact:** Validation bypassed silently, allowing invalid data into the system\n- **Domain:** State & Data\n\n## \ud83d\udfe0 HIGH (80%)\n\n**Schema Cache Poisoning Across Model Variants**\n\n> What if the `@cache` decorator on schema generation doesn't account for different generic type parameters, causing one generic model variant to use another's cached schema?\n\n- **Impact:** Wrong validation rules applied to data, type safety violated\n- **Domain:** State & Data\n\n## \ud83d\udfe0 HIGH (75%)\n\n**Memory Leak via Weakref Circular References**\n\n> What if the `weakref` usage in decorator collection creates circular references between model classes and their metadata that aren't properly garbage collected?\n\n- **Impact:** Memory leak in long-running applications that dynamically create many model classes\n- **Domain:** Resource Limits\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Generic Parameter Resolution with Complex Inheritance**\n\n> What if `get_model_typevars_map` fails to correctly resolve type variables when a model inherits from multiple generic bases with conflicting type parameter names?\n\n- **Impact:** Wrong types inferred for fields, runtime type errors in production\n- **Domain:** Input Validation\n\n## \ud83d\udfe1 MEDIUM (80%)\n\n**Private Attribute Namespace Collision**\n\n> What if `__private_attributes__` from different base classes contain keys with the same name but different `ModelPrivateAttr` configurations?\n\n- **Impact:** Private attribute behavior becomes unpredictable, breaking encapsulation assumptions\n- **Domain:** State & Data\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Stack Overflow from Nested Decorator Wrapping**\n\n> What if `replace_wrapped_methods=True` in `DecoratorInfos.build` creates deeply nested wrapper functions that exceed Python's recursion limit during method calls?\n\n- **Impact:** Runtime crashes when calling heavily decorated methods\n- **Domain:** Resource Limits\n\n## \ud83d\udfe1 MEDIUM (70%)\n\n**Import-Time Side Effects in Dynamic Creation**\n\n> What if `_create_model_module` parameter causes the metaclass to execute in the wrong module context, making relative imports and `__name__` references resolve incorrectly?\n\n- **Impact:** Model creation fails in dynamic scenarios like testing or code generation\n- **Domain:** Configuration"
+    },
+    {
+      "area": "Discriminated Unions",
+      "files": [
+        "pydantic/_internal/_discriminated_union.py"
+      ],
+      "result": {
+        "scope": "Tagged union handling with discriminator field inference - converting Python unions into efficient union_tagged schemas, Literal field discriminator values, alias handling, nested discriminated unions, ambiguous mappings",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if two union members have discriminator literals that are equal after type coercion but different in source (\"1\" vs 1, True vs \"true\")?",
+            "impact": "Silent data corruption where wrong union branch is selected, leading to incorrect field mapping and potentially security bypasses if permissions differ between branches",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Discriminator Value Collision with Type Coercion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if nested discriminated unions create circular references where Union A contains Union B which references back to Union A through the definitions dict?",
+            "impact": "Infinite recursion during schema application, stack overflow crash, service unavailable",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Recursive Union Reference Deadlock"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if some union members have discriminator aliases loaded from definitions while others are inline, and the alias check happens before all definitions are resolved?",
+            "impact": "PydanticUserError thrown incorrectly claiming \"discriminator fields have different aliases\" when they're actually consistent, breaking valid schemas",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Alias Inconsistency with Partial Schema Loading"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if a union contains hundreds of members each with multiple literal discriminator values, creating an exponential explosion in `_tagged_union_choices` dict?",
+            "impact": "Memory exhaustion during schema construction, OOM crash affecting entire service",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Memory Exhaustion from Discriminator Value Explosion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if the input schema has multiple nested nullable wrappers around the union, and `_is_nullable` logic incorrectly tracks state across recursive calls?",
+            "impact": "Double-wrapped nullable schemas or missing nullable wrapper, causing validation to reject valid None values or accept None where it shouldn't",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "None Handling with Nested Nullable Wrapper"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if the discriminator string refers to a field's python name but the actual schema uses the field's alias exclusively, with no mapping between them?",
+            "impact": "PydanticUserError claiming \"model doesn't have discriminator field\" for valid models, breaking working schemas during upgrade",
+            "domains": [
+              "Input Validation"
+            ],
+            "title": "Discriminator Field Name vs Python Attribute Mismatch"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if multiple threads apply discriminators simultaneously using the same definitions dict reference, and one thread modifies it during another's schema traversal?",
+            "impact": "KeyError or corrupted schema references, intermittent validation failures under concurrent load",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Race Condition in Shared Definitions Dict"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 70,
+            "scenario": "What if `_choices_to_handle` stack gets corrupted when a nested union adds choices while the outer union is still being processed, especially if an exception occurs mid-processing?",
+            "impact": "Incomplete tagged union choices, missing valid union branches, some data patterns become unvalidatable",
+            "domains": [
+              "Error Paths"
+            ],
+            "title": "Stack State Corruption with Nested Union Processing"
+          }
+        ],
+        "matched_domains": [
+          "image_processing"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 8,
+          "critical": 1,
+          "high": 3,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "Looking at this discriminated union handling code, I can see several specific risk vectors where the complexity of schema inference, alias handling, and nested unions could break in production.\n\n## \ud83d\udd34 CRITICAL (85%)\n\n**Discriminator Value Collision with Type Coercion**\n\n> What if two union members have discriminator literals that are equal after type coercion but different in source (\"1\" vs 1, True vs \"true\")?\n\n- **Impact:** Silent data corruption where wrong union branch is selected, leading to incorrect field mapping and potentially security bypasses if permissions differ between branches\n- **Domain:** State & Data\n\n## \ud83d\udfe0 HIGH (90%)\n\n**Recursive Union Reference Deadlock**\n\n> What if nested discriminated unions create circular references where Union A contains Union B which references back to Union A through the definitions dict?\n\n- **Impact:** Infinite recursion during schema application, stack overflow crash, service unavailable\n- **Domain:** Concurrency\n\n## \ud83d\udfe0 HIGH (80%)\n\n**Alias Inconsistency with Partial Schema Loading**\n\n> What if some union members have discriminator aliases loaded from definitions while others are inline, and the alias check happens before all definitions are resolved?\n\n- **Impact:** PydanticUserError thrown incorrectly claiming \"discriminator fields have different aliases\" when they're actually consistent, breaking valid schemas\n- **Domain:** State & Data\n\n## \ud83d\udfe0 HIGH (75%)\n\n**Memory Exhaustion from Discriminator Value Explosion**\n\n> What if a union contains hundreds of members each with multiple literal discriminator values, creating an exponential explosion in `_tagged_union_choices` dict?\n\n- **Impact:** Memory exhaustion during schema construction, OOM crash affecting entire service\n- **Domain:** Resource Limits\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**None Handling with Nested Nullable Wrapper**\n\n> What if the input schema has multiple nested nullable wrappers around the union, and `_is_nullable` logic incorrectly tracks state across recursive calls?\n\n- **Impact:** Double-wrapped nullable schemas or missing nullable wrapper, causing validation to reject valid None values or accept None where it shouldn't\n- **Domain:** State & Data\n\n## \ud83d\udfe1 MEDIUM (80%)\n\n**Discriminator Field Name vs Python Attribute Mismatch**\n\n> What if the discriminator string refers to a field's python name but the actual schema uses the field's alias exclusively, with no mapping between them?\n\n- **Impact:** PydanticUserError claiming \"model doesn't have discriminator field\" for valid models, breaking working schemas during upgrade\n- **Domain:** Input Validation\n\n## \ud83d\udfe1 MEDIUM (75%)\n\n**Race Condition in Shared Definitions Dict**\n\n> What if multiple threads apply discriminators simultaneously using the same definitions dict reference, and one thread modifies it during another's schema traversal?\n\n- **Impact:** KeyError or corrupted schema references, intermittent validation failures under concurrent load\n- **Domain:** Concurrency\n\n## \ud83d\udfe1 MEDIUM (70%)\n\n**Stack State Corruption with Nested Union Processing**\n\n> What if `_choices_to_handle` stack gets corrupted when a nested union adds choices while the outer union is still being processed, especially if an exception occurs mid-processing?\n\n- **Impact:** Incomplete tagged union choices, missing valid union branches, some data patterns become unvalidatable\n- **Domain:** Error Paths"
+    },
+    {
+      "area": "Configuration System",
+      "files": [
+        "pydantic/config.py",
+        "pydantic/_internal/_config.py"
+      ],
+      "result": {
+        "scope": "Model configuration via ConfigDict - field extras (allow/ignore/forbid), validation modes (strict/lax), string transformations, computed field config, config inheritance and propagation across model hierarchies",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if child model config overrides parent config in unexpected ways, causing silent validation bypass?",
+            "impact": "Security vulnerabilities when child models accidentally inherit `extra='allow'` from parent but developer expects `extra='forbid'`. Sensitive data leaks through unvalidated extra fields.",
+            "domains": [
+              "Configuration + State & Data"
+            ],
+            "title": "Config Inheritance Override Corruption"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if `str_to_lower`/`str_to_upper` is applied to extremely large strings during validation, causing memory exhaustion?",
+            "impact": "DoS attack vector through crafted payloads. Single request with massive string field can crash application when string transformations create multiple copies in memory.",
+            "domains": [
+              "Resource Limits + Input Validation"
+            ],
+            "title": "String Transformation Memory Exhaustion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if model config is modified after model creation but before validation in multi-threaded environment?",
+            "impact": "Inconsistent validation behavior across concurrent requests. Critical validation rules (like `extra='forbid'`) might not apply, leading to data corruption or security bypass.",
+            "domains": [
+              "Concurrency + Configuration"
+            ],
+            "title": "Config Propagation Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if computed field configuration doesn't propagate correctly through model inheritance, causing computed fields to be evaluated with wrong context?",
+            "impact": "Business logic errors where computed fields use parent model's config instead of child's. Financial calculations or access control computed fields could return incorrect results.",
+            "domains": [
+              "State & Data + Configuration"
+            ],
+            "title": "Computed Field Config Inheritance Mismatch"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 80,
+            "scenario": "What if validation error messages with detailed config info leak internal model structure and field names to external APIs?",
+            "impact": "Reconnaissance attack enablement. Error messages containing field names, validation rules, and internal model structure help attackers understand system internals.",
+            "domains": [
+              "Error Paths + Input Validation"
+            ],
+            "title": "ValidationError Information Disclosure"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if runtime config overrides (like `Model.model_validate(data, extra=\"forbid\")`) persist beyond single validation call due to shared config objects?",
+            "impact": "Validation rules \"stick\" across different validation contexts. Model that should normally allow extra fields starts rejecting them globally after single strict validation.",
+            "domains": [
+              "State & Data + Concurrency"
+            ],
+            "title": "Config Override Persistence Bug"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if `str_to_lower`/`str_to_upper` breaks unicode normalization for non-ASCII characters, corrupting international data?",
+            "impact": "Data corruption for international users. Turkish dotted/dotless i conversion, German \u00df handling, etc. could break user authentication or data integrity.",
+            "domains": [
+              "Input Validation"
+            ],
+            "title": "String Transform Encoding Corruption"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if new validation mode (`strict`/`lax`) is deployed but dependent services still expect old validation behavior?",
+            "impact": "Integration failures when upstream services send data that new strict validation rejects but was previously accepted. Service communication breakdown.",
+            "domains": [
+              "Deployment + External Dependencies"
+            ],
+            "title": "Feature Flag Config Deployment Gap"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if ConfigDict fields are silently coerced to wrong types during inheritance (bool becomes string, etc.)?",
+            "impact": "Subtle validation behavior changes. `frozen: bool` becomes `frozen: \"true\"` string, disabling immutability without obvious failure.",
+            "domains": [
+              "Configuration + Input Validation"
+            ],
+            "title": "Config Dict Type Coercion Surprise"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if model hierarchy creates circular reference in config inheritance, causing infinite recursion during schema generation?",
+            "impact": "Application startup failure or validation hanging indefinitely. Stack overflow crashes during model initialization in complex inheritance hierarchies.",
+            "domains": [
+              "State & Data + Resource Limits"
+            ],
+            "title": "Circular Config Reference Infinite Loop"
+          }
+        ],
+        "matched_domains": [
+          "image_processing",
+          "deployment"
+        ],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 4,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "## Risk Analysis: Pydantic Model Configuration\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**Config Inheritance Override Corruption**\n\n> What if child model config overrides parent config in unexpected ways, causing silent validation bypass?\n\n- **Impact:** Security vulnerabilities when child models accidentally inherit `extra='allow'` from parent but developer expects `extra='forbid'`. Sensitive data leaks through unvalidated extra fields.\n- **Domain:** Configuration + State & Data\n\n### \ud83d\udd34 CRITICAL (80%)\n\n**String Transformation Memory Exhaustion**\n\n> What if `str_to_lower`/`str_to_upper` is applied to extremely large strings during validation, causing memory exhaustion?\n\n- **Impact:** DoS attack vector through crafted payloads. Single request with massive string field can crash application when string transformations create multiple copies in memory.\n- **Domain:** Resource Limits + Input Validation\n\n### \ud83d\udfe0 HIGH (90%)\n\n**Config Propagation Race Condition**\n\n> What if model config is modified after model creation but before validation in multi-threaded environment?\n\n- **Impact:** Inconsistent validation behavior across concurrent requests. Critical validation rules (like `extra='forbid'`) might not apply, leading to data corruption or security bypass.\n- **Domain:** Concurrency + Configuration\n\n### \ud83d\udfe0 HIGH (85%)\n\n**Computed Field Config Inheritance Mismatch**\n\n> What if computed field configuration doesn't propagate correctly through model inheritance, causing computed fields to be evaluated with wrong context?\n\n- **Impact:** Business logic errors where computed fields use parent model's config instead of child's. Financial calculations or access control computed fields could return incorrect results.\n- **Domain:** State & Data + Configuration\n\n### \ud83d\udfe0 HIGH (80%)\n\n**ValidationError Information Disclosure**\n\n> What if validation error messages with detailed config info leak internal model structure and field names to external APIs?\n\n- **Impact:** Reconnaissance attack enablement. Error messages containing field names, validation rules, and internal model structure help attackers understand system internals.\n- **Domain:** Error Paths + Input Validation\n\n### \ud83d\udfe0 HIGH (75%)\n\n**Config Override Persistence Bug**\n\n> What if runtime config overrides (like `Model.model_validate(data, extra=\"forbid\")`) persist beyond single validation call due to shared config objects?\n\n- **Impact:** Validation rules \"stick\" across different validation contexts. Model that should normally allow extra fields starts rejecting them globally after single strict validation.\n- **Domain:** State & Data + Concurrency\n\n### \ud83d\udfe1 MEDIUM (85%)\n\n**String Transform Encoding Corruption**\n\n> What if `str_to_lower`/`str_to_upper` breaks unicode normalization for non-ASCII characters, corrupting international data?\n\n- **Impact:** Data corruption for international users. Turkish dotted/dotless i conversion, German \u00df handling, etc. could break user authentication or data integrity.\n- **Domain:** Input Validation\n\n### \ud83d\udfe1 MEDIUM (80%)\n\n**Feature Flag Config Deployment Gap**\n\n> What if new validation mode (`strict`/`lax`) is deployed but dependent services still expect old validation behavior?\n\n- **Impact:** Integration failures when upstream services send data that new strict validation rejects but was previously accepted. Service communication breakdown.\n- **Domain:** Deployment + External Dependencies\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Config Dict Type Coercion Surprise**\n\n> What if ConfigDict fields are silently coerced to wrong types during inheritance (bool becomes string, etc.)?\n\n- **Impact:** Subtle validation behavior changes. `frozen: bool` becomes `frozen: \"true\"` string, disabling immutability without obvious failure.\n- **Domain:** Configuration + Input Validation\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Circular Config Reference Infinite Loop**\n\n> What if model hierarchy creates circular reference in config inheritance, causing infinite recursion during schema generation?\n\n- **Impact:** Application startup failure or validation hanging indefinitely. Stack overflow crashes during model initialization in complex inheritance hierarchies.\n- **Domain:** State & Data + Resource Limits"
+    },
+    {
+      "area": "TypeAdapter & Dataclasses",
+      "files": [
+        "pydantic/type_adapter.py",
+        "pydantic/dataclasses.py"
+      ],
+      "result": {
+        "scope": "Standalone type validation via TypeAdapter with caching, Pydantic-enhanced dataclasses with validation, RootModel for non-standard shapes, mutable default handling, validation context propagation",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if a TypeAdapter is instantiated with forward references in one module, but symbols with the same names exist in the instantiation context with different types?",
+            "impact": "Silent type validation bypass - data validated against wrong schema, potentially allowing malicious payloads through validation that should fail",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Forward Reference Resolution Poisoning"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 80,
+            "scenario": "What if `_fetch_parent_frame()` is called concurrently across threads and frame references become invalid or mixed between instances?",
+            "impact": "Schema built with wrong namespace context, leading to validation against incorrect types or complete validation failure",
+            "domains": [
+              "Concurrency"
+            ],
+            "title": "Parent Frame Access Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if a TypeAdapter instance is cached/reused but the underlying type definition changes (dataclass fields modified, BaseModel updated) between uses?",
+            "impact": "Validation against outdated schema allows invalid data through or rejects valid data, causing data integrity issues",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Cached Schema Staleness"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if deeply recursive or highly complex types cause the core schema generation to create enormous cached structures that aren't garbage collected?",
+            "impact": "Memory exhaustion leading to OOM crashes, especially problematic since TypeAdapter instances may be long-lived",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Memory Exhaustion via Schema Caching"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 75,
+            "scenario": "What if the `module` parameter is set to a malicious module name that affects plugin behavior or schema resolution in unexpected ways?",
+            "impact": "Plugin system could load unintended behavior or resolve types from wrong contexts, potentially bypassing security validations",
+            "domains": [
+              "Configuration"
+            ],
+            "title": "Module Name Injection"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if a callable object (not `types.FunctionType`) is passed that looks like a function but doesn't trigger the special namespace handling for functions?",
+            "impact": "Forward references in pseudo-function types resolve incorrectly, causing validation to use wrong schema",
+            "domains": [
+              "Input Validation"
+            ],
+            "title": "Function Type Special Handling Bypass"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if `_parent_depth` is set incorrectly and the frame resolution grabs globals/locals from an unexpected scope with name collisions?",
+            "impact": "Type resolution uses wrong symbols, causing subtle validation bugs that are hard to debug",
+            "domains": [
+              "Configuration"
+            ],
+            "title": "Parent Depth Miscalculation"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if `_type_has_config()` check passes but the type gains config between the check and schema generation?",
+            "impact": "Config parameter silently ignored when user expects it to be applied, leading to unexpected validation behavior",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Config Override Detection Race"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 75,
+            "scenario": "What if `pydantic_complete` flag is set to True but schema building actually failed partially, leaving corrupted validator/serializer state?",
+            "impact": "Downstream code assumes TypeAdapter is fully functional when it's not, causing runtime failures during validation/serialization",
+            "domains": [
+              "State & Data"
+            ],
+            "title": "Pydantic Complete Flag Inconsistency"
+          },
+          {
+            "severity": "LOW",
+            "confidence": 85,
+            "scenario": "What if parent frame references are held longer than needed and prevent garbage collection of large objects in the frame's local scope?",
+            "impact": "Memory usage gradually increases over time in long-running applications that create many TypeAdapters",
+            "domains": [
+              "Resource Limits"
+            ],
+            "title": "Frame Reference Memory Leak"
+          }
+        ],
+        "matched_domains": [],
+        "pattern_count": 7,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 3,
+          "medium": 4,
+          "low": 1
+        }
+      },
+      "raw_response": "## Risk Analysis for TypeAdapter with Caching & Validation\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**Forward Reference Resolution Poisoning**\n\n> What if a TypeAdapter is instantiated with forward references in one module, but symbols with the same names exist in the instantiation context with different types?\n\n- **Impact:** Silent type validation bypass - data validated against wrong schema, potentially allowing malicious payloads through validation that should fail\n- **Domain:** State & Data\n\n### \ud83d\udd34 CRITICAL (80%)\n\n**Parent Frame Access Race Condition**\n\n> What if `_fetch_parent_frame()` is called concurrently across threads and frame references become invalid or mixed between instances?\n\n- **Impact:** Schema built with wrong namespace context, leading to validation against incorrect types or complete validation failure\n- **Domain:** Concurrency\n\n### \ud83d\udfe0 HIGH (90%)\n\n**Cached Schema Staleness**\n\n> What if a TypeAdapter instance is cached/reused but the underlying type definition changes (dataclass fields modified, BaseModel updated) between uses?\n\n- **Impact:** Validation against outdated schema allows invalid data through or rejects valid data, causing data integrity issues\n- **Domain:** State & Data\n\n### \ud83d\udfe0 HIGH (85%)\n\n**Memory Exhaustion via Schema Caching**\n\n> What if deeply recursive or highly complex types cause the core schema generation to create enormous cached structures that aren't garbage collected?\n\n- **Impact:** Memory exhaustion leading to OOM crashes, especially problematic since TypeAdapter instances may be long-lived\n- **Domain:** Resource Limits\n\n### \ud83d\udfe0 HIGH (75%)\n\n**Module Name Injection**\n\n> What if the `module` parameter is set to a malicious module name that affects plugin behavior or schema resolution in unexpected ways?\n\n- **Impact:** Plugin system could load unintended behavior or resolve types from wrong contexts, potentially bypassing security validations\n- **Domain:** Configuration\n\n### \ud83d\udfe1 MEDIUM (90%)\n\n**Function Type Special Handling Bypass**\n\n> What if a callable object (not `types.FunctionType`) is passed that looks like a function but doesn't trigger the special namespace handling for functions?\n\n- **Impact:** Forward references in pseudo-function types resolve incorrectly, causing validation to use wrong schema\n- **Domain:** Input Validation\n\n### \ud83d\udfe1 MEDIUM (80%)\n\n**Parent Depth Miscalculation**\n\n> What if `_parent_depth` is set incorrectly and the frame resolution grabs globals/locals from an unexpected scope with name collisions?\n\n- **Impact:** Type resolution uses wrong symbols, causing subtle validation bugs that are hard to debug\n- **Domain:** Configuration\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Config Override Detection Race**\n\n> What if `_type_has_config()` check passes but the type gains config between the check and schema generation?\n\n- **Impact:** Config parameter silently ignored when user expects it to be applied, leading to unexpected validation behavior\n- **Domain:** State & Data\n\n### \ud83d\udfe1 MEDIUM (75%)\n\n**Pydantic Complete Flag Inconsistency**\n\n> What if `pydantic_complete` flag is set to True but schema building actually failed partially, leaving corrupted validator/serializer state?\n\n- **Impact:** Downstream code assumes TypeAdapter is fully functional when it's not, causing runtime failures during validation/serialization\n- **Domain:** State & Data\n\n### \ud83d\udfe2 LOW (85%)\n\n**Frame Reference Memory Leak**\n\n> What if parent frame references are held longer than needed and prevent garbage collection of large objects in the frame's local scope?\n\n- **Impact:** Memory usage gradually increases over time in long-running applications that create many TypeAdapters\n- **Domain:** Resource Limits"
+    }
+  ]
+}
