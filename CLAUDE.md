@@ -4,18 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Gremlin is an exploratory QA tool (CLI + Python library) that identifies risk scenarios in software features using:
-- 107 curated QA patterns (domain-specific "what if?" questions)
-- Claude's reasoning (applies patterns intelligently to user-provided scope)
-- Rich terminal output (actionable risk scenarios)
+Gremlin is a pre-ship risk critic (CLI + Python library) that surfaces breaking risk scenarios before they reach production using:
+- 107 curated QA patterns across 14 domains (domain-specific "what if?" questions)
+- LLM reasoning via Anthropic Claude (applies patterns intelligently to user-provided scope)
+- Rich terminal output (actionable risk scenarios with severity, confidence, and impact)
 
-**Two ways to use Gremlin:**
+**Package**: `gremlin-critic` on PyPI (v0.2.0)
+**Python**: >=3.10
+
+**Three ways to use Gremlin:**
 1. **CLI:** `gremlin review "checkout flow"` - Command-line interface
 2. **API:** `from gremlin import Gremlin` - Python library for integrations
+3. **Agent:** Claude Code agent for code-focused QA review (`plugins/gremlin/agents/gremlin.md`)
 
-Users receive ranked risk scenarios with severity, confidence, and impact analysis.
-
-## ⚠️ CRITICAL: Always Create a New Branch First
+## CRITICAL: Always Create a New Branch First
 
 **BEFORE starting ANY new requirement, feature, fix, or refactor:**
 
@@ -33,14 +35,7 @@ git checkout -b <prefix>/descriptive-name
 # Example: feat/add-custom-patterns
 ```
 
-This rule applies to:
-- ✅ New features and functionality
-- ✅ Bug fixes and corrections
-- ✅ Refactoring and code improvements
-- ✅ Documentation updates
-- ✅ Any change to the codebase
-
-**Exception:** None. Always use a branch.
+This rule applies to ALL changes. No exceptions.
 
 ## Development Commands
 
@@ -57,7 +52,7 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 ### Testing
 ```bash
-# Run all tests
+# Run all tests (50 tests across 6 files)
 pytest
 
 # Run specific test file
@@ -65,15 +60,21 @@ pytest tests/test_patterns.py
 
 # Run with coverage
 pytest --cov=gremlin
+
+# Run only unit tests (no API key needed)
+pytest -k "not Integration"
 ```
 
-### Linting
+### Linting & Type Checking
 ```bash
-# Check code
+# Check code (line-length=100, rules: E,F,I,N,W)
 ruff check .
 
 # Auto-fix issues
 ruff check --fix .
+
+# Type check
+mypy gremlin/
 ```
 
 ### Running the Tool
@@ -86,17 +87,26 @@ gremlin review "checkout flow"
 # With options
 gremlin review "auth system" --depth deep --threshold 60 --output json
 
-# With context
+# With context (string, file reference, or stdin)
 gremlin review "checkout" --context "Using Stripe, Next.js"
 gremlin review "auth" --context @src/auth/login.ts
 git diff | gremlin review "changes" --context -
 
+# With custom patterns (merged with built-in)
+gremlin review "checkout" --patterns @my-patterns.yaml
+
+# With validation pass (second LLM call filters hallucinations)
+gremlin review "checkout" --validate
+
 # View patterns
 gremlin patterns list
 gremlin patterns show payments
+
+# Learn from incidents
+gremlin learn "Nav bar showed Login after successful auth" --domain auth --source myproject
 ```
 
-**Programmatic API Usage (New):**
+**Programmatic API Usage:**
 ```python
 from gremlin import Gremlin
 
@@ -119,10 +129,16 @@ result = await gremlin.analyze_async("payment processing")
 
 ### Evaluation Framework
 ```bash
-# Run A/B testing evaluation comparing Gremlin vs raw Claude
-./evals/run_eval.py
+# Run A/B testing (Gremlin vs raw Claude)
+./evals/run_eval.py --all --trials 1
 
-# Results are saved to evals/results/<timestamp>/
+# Parallel with safe worker count
+./evals/run_eval.py --all --trials 1 --parallel --workers 2
+
+# Run specific domain
+./evals/run_eval.py evals/cases/real-world/infrastructure-*.yaml --trials 3
+
+# Results are saved to evals/results/
 ```
 
 ## Architecture
@@ -131,112 +147,137 @@ result = await gremlin.analyze_async("payment processing")
 The application follows this pipeline:
 
 **Entry Points:**
-- **CLI:** `gremlin/cli.py` - Parses command-line arguments
-- **API:** `gremlin/api.py` - Programmatic interface (`Gremlin` class)
+- **CLI:** `gremlin/cli.py` — Implements full pipeline independently (patterns, prompts, LLM call, rendering)
+- **API:** `gremlin/api.py` — Programmatic interface (`Gremlin` class) with structured output
 
-**Analysis Pipeline (used by both CLI and API):**
+**Note:** The CLI and API both implement the analysis pipeline independently. They share the same core modules but CLI does NOT wrap `Gremlin.analyze()`. Changes to the pipeline need to be applied in both entry points.
+
+**Analysis Pipeline (shared core modules):**
 
 1. **Domain Inference** (`gremlin/core/inference.py`)
    - Matches scope keywords to pattern domains
    - Example: "checkout" → `payments` domain
 
 2. **Pattern Selection** (`gremlin/core/patterns.py`)
-   - Loads patterns from `patterns/breaking.yaml`
+   - Loads patterns from `gremlin/patterns/breaking.yaml` + incidents
+   - Merges project-level patterns from `.gremlin/patterns.yaml` if present
    - Selects universal patterns + matched domain patterns
-   - Universal patterns always apply, domain-specific only when matched
 
 3. **Prompt Building** (`gremlin/core/prompts.py`)
-   - Combines system prompt (`prompts/system.md`) with selected patterns
+   - Combines system prompt with selected patterns via YAML serialization
    - Adds user scope, depth, threshold, and optional context
-   - Creates structured prompt for Claude API
 
-4. **LLM Call** (`gremlin/llm/factory.py` + `gremlin/llm/providers/`)
-   - Calls LLM API with constructed prompts
-   - Supports multiple providers: Anthropic (default), OpenAI, Ollama
-   - Uses `claude-sonnet-4-20250514` by default (override via `GREMLIN_MODEL` env var)
+4. **LLM Call** (`gremlin/llm/factory.py` + `gremlin/llm/providers/anthropic.py`)
+   - Calls Anthropic API with constructed prompts
+   - Currently only Anthropic provider is implemented (provider factory supports future additions)
+   - Default model: `claude-sonnet-4-20250514` (override via `GREMLIN_MODEL` env var)
+   - Default temperature: 1.0, max_tokens: 4096, timeout: 120s
 
 5. **Response Processing:**
-   - **API:** Returns structured `AnalysisResult` with `Risk` objects
-   - **CLI:** Renders via `gremlin/output/renderer.py` (rich, markdown, or JSON)
+   - **API:** Parses markdown into structured `Risk` objects via regex, returns `AnalysisResult`
+   - **CLI:** Renders raw markdown via `gremlin/output/renderer.py` (rich, markdown, or JSON)
+
+6. **Optional Validation** (CLI only via `--validate` flag):
+   - Second LLM pass using `gremlin/core/validator.py`
+   - Checks relevance, specificity, duplicates, severity alignment
+   - Not wired into the API — API users must validate separately
+
+### Architecture Diagrams
+- `docs/architecture.drawio` — Editable 2-tab diagram (high-level + data flow)
+- `docs/architecture-high-level.png` — System layer overview
+- `docs/architecture-data-flow.png` — 7-step pipeline visualization
 
 ## Gremlin Agent vs CLI Tool
-
-The Gremlin project provides two complementary tools:
 
 ### Gremlin CLI Tool
 **Location**: `gremlin/` (Python package)
 **Purpose**: Feature-scope QA analysis from PRD/specification
-**Patterns**: 107 patterns in `patterns/breaking.yaml`
+**Patterns**: 107 patterns in `gremlin/patterns/breaking.yaml` (7 universal categories, 14 domains)
 **Usage**: `gremlin review "checkout flow"`
-
-**When to use**:
-- Analyzing features from PRD/design docs
-- Pre-implementation risk assessment
-- Comprehensive feature-scope analysis
-- Sharing reports with stakeholders
 
 ### Gremlin Agent
 **Location**: `plugins/gremlin/agents/gremlin.md`
 **Purpose**: Code-focused QA review in Claude Code sessions
-**Patterns**: 45-50 code-review patterns in `patterns/code-review.yaml`
+**Patterns**: 65 code-review patterns in `gremlin/patterns/code-review.yaml` (5 universal categories, 10 domains)
 **Usage**: Invoke agent during code review in Claude Code
 
-**When to use**:
-- PR review and code inspection
-- Line-specific risk identification
-- Implementation detail analysis
-- Database, concurrency, and security pattern matching
-
 ### Integration
-The agent can optionally invoke the CLI for enhanced analysis:
-- Agent performs code-focused review (embedded patterns)
-- If CLI installed, agent can run feature-scope analysis
-- Combined analysis provides comprehensive coverage
+- Agent is 100% standalone but can optionally invoke CLI via `gremlin/integrations/agent_bridge.py`
+- Agent patterns: code-centric (what could break in implementation)
+- CLI patterns: feature-centric (what could break in user experience)
+- Universal patterns duplicated in both for independence
 
 ### Pattern Files
-- `patterns/breaking.yaml` - CLI patterns (72 total, feature-focused)
-- `patterns/code-review.yaml` - Agent patterns (45-50 total, code-focused)
-- Universal patterns duplicated in both for independence
-- Quarterly sync process maintains alignment
+- `gremlin/patterns/breaking.yaml` — CLI patterns (107 total across 14 domains)
+- `gremlin/patterns/code-review.yaml` — Agent patterns (65 total across 10 domains)
+- `gremlin/patterns/incidents/` — Patterns learned from real incidents via `gremlin learn`
 
 ### Key Design Patterns
 
-**Pattern Structure** (`patterns/breaking.yaml`):
+**Pattern Structure** (`gremlin/patterns/breaking.yaml`):
 - `universal`: Categories of patterns applied to every analysis
 - `domain_specific`: Domain-keyed patterns with keywords for inference
 - Each domain has `keywords` (for matching) and `patterns` (what-if questions)
 
-**Context Resolution** (cli.py:29-55):
+**Context Resolution** (`gremlin/cli.py`):
 - Direct string: `--context "Using Stripe"`
 - File reference: `--context @path/to/file`
 - Stdin pipe: `--context -` (reads from stdin if not TTY)
 
-**Eval Framework** (`evals/run_eval.py`):
-- A/B tests Gremlin (with patterns) vs raw Claude (no patterns)
-- Uses dataclasses for eval cases, metrics, and results
-- Extracts metrics by regex matching severity levels and "what if" counts
-- Saves detailed JSON results with diff analysis
+**Project-Level Patterns**:
+- CLI checks `.gremlin/patterns.yaml` in the current working directory
+- If found, patterns are merged with built-in patterns
+- Allows teams to add project-specific risk patterns
 
 ## Important Files
 
-- `patterns/breaking.yaml`: 107 curated QA patterns organized by domain
-- `prompts/system.md`: System prompt defining Gremlin's persona and output format
-- `gremlin/api.py`: Programmatic API with `Gremlin`, `Risk`, and `AnalysisResult` classes
-- `gremlin/cli.py`: CLI entry point (thin wrapper around api.py)
-- `gremlin/__init__.py`: Public API exports (`Gremlin`, `Risk`, `AnalysisResult`)
-- `tests/test_api.py`: Comprehensive API test suite (23 tests)
-- `pyproject.toml`: Build configuration, dependencies, and tool settings
+### Core Package
+- `gremlin/api.py`: Programmatic API — `Gremlin`, `Risk`, `AnalysisResult` classes
+- `gremlin/cli.py`: CLI entry point — `review`, `patterns`, `learn` commands
+- `gremlin/__init__.py`: Public exports (`Gremlin`, `Risk`, `AnalysisResult`, `__version__`)
+- `gremlin/core/validator.py`: LLM-as-judge risk quality checker (CLI `--validate` only)
+- `gremlin/core/patterns.py`: Pattern loading, merging, and selection
+- `gremlin/core/prompts.py`: System prompt loading and prompt construction
+- `gremlin/core/inference.py`: Domain keyword matching from scope
+- `gremlin/llm/factory.py`: Provider factory and registry
+- `gremlin/llm/providers/anthropic.py`: Anthropic Claude implementation
+- `gremlin/llm/claude.py`: **DEPRECATED** — backward compat, no longer imported
+- `gremlin/integrations/agent_bridge.py`: Agent-to-CLI bridge utilities
+- `gremlin/output/renderer.py`: Rich, markdown, JSON output rendering
+
+### Patterns & Prompts
+- `gremlin/patterns/breaking.yaml`: 107 QA patterns (14 domains)
+- `gremlin/patterns/code-review.yaml`: 65 code-review patterns (10 domains)
+- `gremlin/patterns/incidents/`: Incident-learned patterns (populated by `gremlin learn`)
+- `gremlin/prompts/system.md`: System prompt defining persona and output format
+
+### Configuration & Docs
+- `pyproject.toml`: Build config (hatchling), dependencies, ruff/pytest/mypy settings
+- `.github/workflows/ci.yml`: CI pipeline — ruff + pytest + coverage on Python 3.10/3.11/3.12
+- `ROADMAP.md`: Project roadmap and priorities
+- `CHANGELOG.md`: Version history
+
+### Tests
+- `tests/` — 50 tests across 6 files
+- Unit tests mock LLM providers; 2 integration tests require `ANTHROPIC_API_KEY`
+
+### Eval Framework
+- `evals/run_eval.py`: A/B testing runner (54 test cases: 7 curated + 47 real-world)
+- `evals/cases/`: YAML test case definitions
+- `evals/critiques/`: Manual quality assessments (httpx, pydantic, celery)
+- `evals/results/`: Timestamped JSON results (gitignored)
 
 ## Environment Variables
 
-- `ANTHROPIC_API_KEY` (required): Anthropic API key
-- `GREMLIN_MODEL` (optional): Override default Claude model
+- `ANTHROPIC_API_KEY` (required): Anthropic API key for LLM calls
+- `GREMLIN_MODEL` (optional): Override default model (default: `claude-sonnet-4-20250514`)
+- `GREMLIN_PROVIDER` (optional): Override LLM provider (default: `anthropic` — currently the only implemented provider)
 
 ## Adding New Pattern Domains
 
 To add a new domain (e.g., "notifications"):
 
-1. Edit `patterns/breaking.yaml`:
+1. Edit `gremlin/patterns/breaking.yaml`:
    ```yaml
    domain_specific:
      notifications:
@@ -247,13 +288,28 @@ To add a new domain (e.g., "notifications"):
    ```
 
 2. The domain is automatically detected via keyword matching in user scope
-3. No code changes needed - patterns are loaded dynamically
+3. No code changes needed — patterns are loaded dynamically
+
+To learn from incidents:
+```bash
+gremlin learn "Nav bar showed Login after successful auth" --domain auth --source myproject
+```
 
 ## Testing Philosophy
 
-- Unit tests focus on pattern loading, domain inference, and prompt building
-- No LLM mocking - actual API calls are integration tests (use sparingly)
-- Eval framework provides systematic A/B testing for quality assessment
+- Unit tests mock LLM providers to test pattern loading, domain inference, prompt building, and risk parsing
+- Integration tests (gated by `ANTHROPIC_API_KEY`) verify end-to-end API calls
+- Eval framework provides systematic A/B testing comparing Gremlin vs raw Claude
+- CI runs ruff + pytest on every push/PR to main
+
+## Gotchas
+
+- **CLI ≠ API wrapper**: `cli.py` reimplements the pipeline; it does NOT call `Gremlin.analyze()`. Changes must be applied to both.
+- **Validator is CLI-only**: `gremlin/core/validator.py` is wired into `--validate` flag but not into `api.py`'s `analyze()` method.
+- **Only Anthropic works**: `factory.py` has default model names for OpenAI/Ollama but no actual provider implementations.
+- **`gremlin/llm/claude.py` is dead code**: Marked DEPRECATED, no longer imported. Use `gremlin.llm.factory.get_provider()` instead.
+- **`docs/*` is gitignored**: `.gitignore` excludes `docs/*` except `quickstart.md`, `architecture.drawio`, and architecture PNGs. New docs files need explicit exceptions.
+- **`temperature=1.0` default**: `LLMConfig` defaults to maximum sampling diversity.
 
 ## Git Workflow
 
