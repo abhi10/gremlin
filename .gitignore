@@ -50,6 +50,9 @@ Thumbs.db
 # Internal docs and sessions (not for public)
 docs/*
 !docs/quickstart.md
+!docs/architecture.drawio
+!docs/architecture-high-level.png
+!docs/architecture-data-flow.png
 sessions/
 
 # Eval results (timestamped, local only)
