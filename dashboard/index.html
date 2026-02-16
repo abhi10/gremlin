@@ -78,17 +78,6 @@ body {
   cursor: pointer;
 }
 .project-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.upload-btn {
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  padding: 6px 14px;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.upload-btn:hover { color: var(--accent); border-color: var(--accent); }
 .github-link {
   color: var(--text-muted);
   text-decoration: none;
@@ -97,22 +86,7 @@ body {
 }
 .github-link:hover { color: var(--text-primary); }
 
-/* ── Drop zone overlay ───────────────────────────────────────── */
-.drop-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(15,23,42,0.9);
-  z-index: 200;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  color: var(--accent);
-  border: 3px dashed var(--accent);
-  margin: 16px;
-  border-radius: 16px;
-}
-.drop-overlay.active { display: flex; }
+/* Drop zone overlay removed - upload functionality disabled for hosted dashboard */
 
 /* ── Main Container ──────────────────────────────────────────── */
 .container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
@@ -464,14 +438,9 @@ body {
     <select class="project-select" id="projectSelect" title="Select project">
       <option value="">Loading projects...</option>
     </select>
-    <label class="upload-btn" for="fileUpload">Upload JSON</label>
-    <input type="file" id="fileUpload" accept=".json" hidden>
     <a class="github-link" href="https://github.com/abhi10/gremlin" target="_blank" rel="noopener">GitHub</a>
   </div>
 </header>
-
-<!-- Drop overlay -->
-<div class="drop-overlay" id="dropOverlay">Drop Gremlin results JSON here</div>
 
 <!-- Main content -->
 <main class="container" id="mainContent">
@@ -1054,24 +1023,8 @@ function formatDate(dateStr) {
 
 // ── Init ─────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  // File upload
-  document.getElementById('fileUpload').addEventListener('change', (e) => {
-    if (e.target.files[0]) loadFromFile(e.target.files[0]);
-  });
-
-  // Drag and drop
-  const overlay = document.getElementById('dropOverlay');
-  let dragCounter = 0;
-  document.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; overlay.classList.add('active'); });
-  document.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) overlay.classList.remove('active'); });
-  document.addEventListener('dragover', (e) => e.preventDefault());
-  document.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dragCounter = 0;
-    overlay.classList.remove('active');
-    const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.json')) loadFromFile(file);
-  });
+  // File upload and drag-and-drop disabled for hosted dashboard
+  // Only catalog-based project loading is enabled
 
   // Load catalog
   loadFromCatalog();
