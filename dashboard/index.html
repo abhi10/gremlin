@@ -44,14 +44,15 @@ body {
 .header {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border);
-  padding: 12px 24px;
+  padding: 16px 24px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
   position: sticky;
   top: 0;
   z-index: 100;
+  text-align: center;
 }
 .header-logo {
   font-size: 1.25rem;
@@ -64,9 +65,9 @@ body {
   font-size: 0.85rem;
   color: var(--text-secondary);
   line-height: 1.4;
-  max-width: 600px;
+  max-width: 700px;
 }
-.header-controls { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.header-controls { display: flex; align-items: center; gap: 12px; }
 .project-select {
   background: var(--bg-primary);
   color: var(--text-primary);
