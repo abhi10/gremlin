@@ -6,11 +6,6 @@
       "file": "celery-results.json"
     },
     {
-      "id": "httpx",
-      "name": "encode/httpx",
-      "file": "httpx-results.json"
-    },
-    {
       "id": "openclaw",
       "name": "openclaw/openclaw",
       "file": "openclaw-results.json"
