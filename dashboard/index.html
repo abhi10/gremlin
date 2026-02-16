@@ -60,6 +60,12 @@ body {
   letter-spacing: -0.02em;
 }
 .header-logo span { color: var(--text-primary); }
+.header-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  max-width: 600px;
+}
 .header-controls { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .project-select {
   background: var(--bg-primary);
@@ -447,7 +453,13 @@ body {
 
 <!-- Header -->
 <header class="header">
-  <div class="header-logo">Gremlin <span>Risk Dashboard</span> <small style="opacity:0.5;font-size:0.7em;font-weight:400;">v2.0</small></div>
+  <div>
+    <div class="header-logo">Gremlin <span>Risk Dashboard</span> <small style="opacity:0.5;font-size:0.7em;font-weight:400;">v2.0</small></div>
+    <div class="header-description">
+      AI-powered risk analysis using 107 QA patterns to identify critical scenarios across security, concurrency, payments, and more.<br>
+      Visualize and explore risks from Gremlin scans with interactive heatmaps, severity breakdowns, and detailed impact assessments.
+    </div>
+  </div>
   <div class="header-controls">
     <select class="project-select" id="projectSelect" title="Select project">
       <option value="">Loading projects...</option>
