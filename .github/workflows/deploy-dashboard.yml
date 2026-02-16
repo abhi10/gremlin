@@ -6,6 +6,7 @@ on:
     paths:
       - 'dashboard/**'
       - 'evals/critiques/**-results.json'
+  workflow_dispatch:
 
 permissions:
   contents: read
