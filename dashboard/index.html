@@ -467,7 +467,9 @@ body {
 </main>
 
 <!-- Chart.js CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+  integrity="sha384-vsrfeLOOY6KuIYKDlmVH5UiBmgIdB1oEf7p01YgWHuqmOHfZr374+odEv96n9tNC"
+  crossorigin="anonymous"></script>
 
 <script>
 /* ═══════════════════════════════════════════════════════════════
@@ -597,7 +599,7 @@ function renderDashboard() {
     <!-- Project Banner -->
     <div class="project-banner">
       <div class="project-name">
-        ${currentData.url
+        ${currentData.url && /^https?:\/\//.test(currentData.url)
           ? `<a href="${esc(currentData.url)}" target="_blank" rel="noopener">${esc(currentData.target)}</a>`
           : esc(currentData.target)}
       </div>
@@ -1015,7 +1017,7 @@ function showEmpty(msg) {
   document.getElementById('mainContent').innerHTML = `
     <div class="empty-state">
       <h2>No Data Loaded</h2>
-      <p>${msg}</p>
+      <p>${esc(msg)}</p>
     </div>`;
 }
 
