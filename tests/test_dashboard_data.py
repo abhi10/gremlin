@@ -3,8 +3,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 
 def test_catalog_exists():
     """Test that catalog.json exists."""
