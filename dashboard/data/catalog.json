@@ -1,0 +1,24 @@
+{
+  "projects": [
+    {
+      "id": "celery",
+      "name": "celery/celery",
+      "file": "celery-results.json"
+    },
+    {
+      "id": "httpx",
+      "name": "encode/httpx",
+      "file": "httpx-results.json"
+    },
+    {
+      "id": "openclaw",
+      "name": "openclaw/openclaw",
+      "file": "openclaw-results.json"
+    },
+    {
+      "id": "pydantic",
+      "name": "pydantic/pydantic",
+      "file": "pydantic-results.json"
+    }
+  ]
+}

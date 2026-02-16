@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gremlin Risk Dashboard</title>
+<style>
+/* ── Reset & Base ────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary: #0F172A;
+  --bg-card: #1E293B;
+  --bg-card-hover: #334155;
+  --border: #334155;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --accent: #6366F1;
+  --accent-hover: #818CF8;
+  --critical: #DC2626;
+  --critical-bg: rgba(220,38,38,0.15);
+  --high: #EA580C;
+  --high-bg: rgba(234,88,12,0.15);
+  --medium: #D97706;
+  --medium-bg: rgba(217,119,6,0.15);
+  --low: #16A34A;
+  --low-bg: rgba(22,163,74,0.15);
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+html { font-size: 14px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+.header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-logo {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+.header-logo span { color: var(--text-primary); }
+.header-controls { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+.project-select {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.project-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.upload-btn {
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.upload-btn:hover { color: var(--accent); border-color: var(--accent); }
+.github-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.2s;
+}
+.github-link:hover { color: var(--text-primary); }
+
+/* ── Drop zone overlay ───────────────────────────────────────── */
+.drop-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,0.9);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--accent);
+  border: 3px dashed var(--accent);
+  margin: 16px;
+  border-radius: 16px;
+}
+.drop-overlay.active { display: flex; }
+
+/* ── Main Container ──────────────────────────────────────────── */
+.container { max-width: 1400px; margin: 0 auto; padding: 20px 24px; }
+
+/* ── Project Banner ──────────────────────────────────────────── */
+.project-banner {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.project-name {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.project-name a { color: var(--text-primary); text-decoration: none; }
+.project-name a:hover { color: var(--accent); }
+.project-meta {
+  display: flex;
+  gap: 20px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+.project-meta span::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.project-meta span:first-child::before { display: none; }
+
+/* ── Summary Cards ───────────────────────────────────────────── */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  text-align: center;
+}
+.card-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.card-label { color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.card-critical .card-value { color: var(--critical); }
+.card-high .card-value { color: var(--high); }
+
+/* ── Charts Row ──────────────────────────────────────────────── */
+.charts-row {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.chart-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.chart-panel h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.charts-sidebar { display: flex; flex-direction: column; gap: 20px; }
+.chart-canvas-wrap { position: relative; max-height: 220px; }
+.chart-canvas-wrap canvas { max-height: 220px; }
+
+/* ── Heatmap ─────────────────────────────────────────────────── */
+.heatmap-grid {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+}
+.heatmap-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 8px 4px;
+  color: var(--text-secondary);
+}
+.heatmap-area-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+.heatmap-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 10px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  min-height: 44px;
+}
+.heatmap-cell:hover {
+  transform: scale(1.08);
+  z-index: 10;
+  box-shadow: 0 0 12px rgba(0,0,0,0.5);
+}
+.heatmap-cell[data-count="0"] {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+/* Heatmap tooltip */
+.heatmap-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  max-width: 320px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.4;
+}
+.heatmap-cell:hover .heatmap-tooltip { display: block; }
+.heatmap-tooltip strong { color: var(--text-primary); display: block; margin-bottom: 4px; }
+.heatmap-tooltip ul { padding-left: 14px; margin: 0; }
+.heatmap-tooltip li { margin-bottom: 2px; }
+
+/* ── Risk Table ──────────────────────────────────────────────── */
+.table-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.table-section h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+}
+.table-filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.table-filters select, .table-filters input {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+.table-filters input { flex: 1; min-width: 200px; }
+.table-filters input::placeholder { color: var(--text-muted); }
+.risk-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.risk-table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 2px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.risk-table thead th:hover { color: var(--text-primary); }
+.risk-table thead th.sorted-asc::after { content: ' \u25B2'; font-size: 0.65rem; }
+.risk-table thead th.sorted-desc::after { content: ' \u25BC'; font-size: 0.65rem; }
+.risk-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.risk-table tbody tr:hover { background: var(--bg-card-hover); }
+.risk-table tbody td { padding: 10px 12px; vertical-align: top; }
+.risk-table .severity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.severity-CRITICAL { background: var(--critical-bg); color: var(--critical); }
+.severity-HIGH { background: var(--high-bg); color: var(--high); }
+.severity-MEDIUM { background: var(--medium-bg); color: var(--medium); }
+.severity-LOW { background: var(--low-bg); color: var(--low); }
+.risk-expand {
+  display: none;
+  padding: 12px 12px 12px 48px;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+.risk-expand.open { display: table-row; }
+.risk-expand td { padding: 0 12px 16px 48px; }
+.risk-expand .label {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+.risk-expand .value { margin-bottom: 10px; }
+.confidence-bar {
+  display: inline-block;
+  width: 40px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+.domain-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  background: rgba(99,102,241,0.15);
+  color: var(--accent);
+  margin: 1px 3px 1px 0;
+}
+
+/* ── Footer ──────────────────────────────────────────────────── */
+.footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+.footer a { color: var(--accent); text-decoration: none; }
+
+/* ── Loading ─────────────────────────────────────────────────── */
+.loading {
+  text-align: center;
+  padding: 60px;
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+.loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Empty state ─────────────────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-muted);
+}
+.empty-state h2 { color: var(--text-secondary); margin-bottom: 12px; font-size: 1.2rem; }
+.empty-state p { max-width: 400px; margin: 0 auto; }
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .charts-row { grid-template-columns: 1fr; }
+  .charts-sidebar { flex-direction: row; }
+  .charts-sidebar .chart-panel { flex: 1; }
+}
+@media (max-width: 768px) {
+  .summary-cards { grid-template-columns: repeat(2, 1fr); }
+  .charts-sidebar { flex-direction: column; }
+  .header { padding: 10px 16px; }
+  .container { padding: 12px 16px; }
+  .heatmap-area-label { font-size: 0.7rem; }
+  .table-filters { flex-direction: column; }
+  .table-filters input { min-width: 0; }
+}
+@media (max-width: 480px) {
+  .summary-cards { grid-template-columns: 1fr 1fr; }
+  .project-meta { flex-direction: column; gap: 4px; }
+  .project-meta span::before { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">Gremlin <span>Risk Dashboard</span></div>
+  <div class="header-controls">
+    <select class="project-select" id="projectSelect" title="Select project">
+      <option value="">Loading projects...</option>
+    </select>
+    <label class="upload-btn" for="fileUpload">Upload JSON</label>
+    <input type="file" id="fileUpload" accept=".json" hidden>
+    <a class="github-link" href="https://github.com/abhi10/gremlin" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<!-- Drop overlay -->
+<div class="drop-overlay" id="dropOverlay">Drop Gremlin results JSON here</div>
+
+<!-- Main content -->
+<main class="container" id="mainContent">
+  <div class="loading" id="loadingState">
+    <div class="loading-spinner"></div>
+    <div>Loading dashboard...</div>
+  </div>
+</main>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   Gremlin Risk Dashboard — Single-file static dashboard
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Constants ────────────────────────────────────────────────────
+const SEVERITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+const SEVERITY_COLORS = {
+  CRITICAL: { hex: '#DC2626', rgb: '220,38,38' },
+  HIGH:     { hex: '#EA580C', rgb: '234,88,12' },
+  MEDIUM:   { hex: '#D97706', rgb: '217,119,6' },
+  LOW:      { hex: '#16A34A', rgb: '22,163,74' },
+};
+const DOMAIN_ALIASES = {
+  'resource limits': 'Resource Limits', 'memory': 'Resource Limits',
+  'concurrency': 'Concurrency', 'state & data': 'State & Data',
+  'state': 'State & Data', 'input validation': 'Input Validation',
+  'error paths': 'Error Paths', 'external dependencies': 'External Deps',
+  'configuration': 'Configuration', 'auth': 'Auth',
+  'authentication': 'Auth', 'security': 'Security',
+  'infrastructure': 'Infrastructure', 'deployment': 'Deployment',
+  'distributed': 'Distributed', 'file upload': 'File Upload',
+  'database': 'Database', 'serialization': 'Serialization',
+};
+
+// ── State ────────────────────────────────────────────────────────
+let currentData = null;
+let allRisks = [];
+let chartDonut = null;
+let chartDomain = null;
+let tableSort = { col: 'severity', dir: 'asc' };
+let tableFilters = { severity: '', area: '', search: '' };
+
+// ── Domain Normalization ─────────────────────────────────────────
+function normalizeDomains(rawDomains) {
+  if (!rawDomains || !Array.isArray(rawDomains)) return [];
+  const result = new Set();
+  for (const raw of rawDomains) {
+    const parts = raw.split(/\s*[+/,]\s*/);
+    for (let part of parts) {
+      part = part.replace(/^universal[\s.\-()]*/, '').trim();
+      const key = part.toLowerCase();
+      const canonical = DOMAIN_ALIASES[key];
+      result.add(canonical || (part.charAt(0).toUpperCase() + part.slice(1)));
+    }
+  }
+  return [...result];
+}
+
+// ── Data Processing ──────────────────────────────────────────────
+function processData(data) {
+  currentData = data;
+  allRisks = [];
+  for (const area of data.areas || []) {
+    const risks = area.result?.risks || [];
+    for (const risk of risks) {
+      allRisks.push({
+        ...risk,
+        area: area.area,
+        normalizedDomains: normalizeDomains(risk.domains),
+      });
+    }
+  }
+  return { data, allRisks };
+}
+
+// ── Summary Stats ────────────────────────────────────────────────
+function calcSummary(risks) {
+  const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  let totalConf = 0;
+  for (const r of risks) {
+    counts[r.severity] = (counts[r.severity] || 0) + 1;
+    totalConf += r.confidence || 0;
+  }
+  return {
+    total: risks.length,
+    ...counts,
+    avgConf: risks.length ? Math.round(totalConf / risks.length) : 0,
+    areas: new Set(risks.map(r => r.area)).size,
+  };
+}
+
+// ── Heatmap Data ─────────────────────────────────────────────────
+function buildHeatmapData(risks) {
+  const areaNames = [...new Set(risks.map(r => r.area))];
+  const grid = {};
+  const colMax = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
+  for (const area of areaNames) {
+    grid[area] = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, risks: {} };
+    for (const sev of SEVERITY_ORDER) grid[area].risks[sev] = [];
+  }
+  for (const r of risks) {
+    if (grid[r.area]) {
+      grid[r.area][r.severity]++;
+      grid[r.area].risks[r.severity].push(r.title || r.scenario?.slice(0, 60));
+    }
+  }
+  for (const area of areaNames) {
+    for (const sev of SEVERITY_ORDER) {
+      colMax[sev] = Math.max(colMax[sev], grid[area][sev]);
+    }
+  }
+  return { areaNames, grid, colMax };
+}
+
+// ── Domain Stats ─────────────────────────────────────────────────
+function buildDomainStats(risks) {
+  const counts = {};
+  for (const r of risks) {
+    for (const d of r.normalizedDomains) {
+      counts[d] = (counts[d] || 0) + 1;
+    }
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+}
+
+// ── Render Dashboard ─────────────────────────────────────────────
+function renderDashboard() {
+  if (!currentData) return;
+  const summary = calcSummary(allRisks);
+  const hm = buildHeatmapData(allRisks);
+  const domainStats = buildDomainStats(allRisks);
+
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `
+    <!-- Project Banner -->
+    <div class="project-banner">
+      <div class="project-name">
+        ${currentData.url
+          ? `<a href="${esc(currentData.url)}" target="_blank" rel="noopener">${esc(currentData.target)}</a>`
+          : esc(currentData.target)}
+      </div>
+      <div class="project-meta">
+        <span>Scanned ${formatDate(currentData.date)}</span>
+        <span>Depth: ${esc(currentData.depth || 'deep')}</span>
+        <span>Threshold: ${currentData.threshold || 70}%</span>
+        <span>Gremlin v${esc(currentData.gremlin_version || '0.2.0')}</span>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-cards">
+      <div class="card">
+        <div class="card-value">${summary.total}</div>
+        <div class="card-label">Total Risks</div>
+      </div>
+      <div class="card card-critical">
+        <div class="card-value">${summary.CRITICAL}</div>
+        <div class="card-label">Critical</div>
+      </div>
+      <div class="card card-high">
+        <div class="card-value">${summary.HIGH}</div>
+        <div class="card-label">High</div>
+      </div>
+      <div class="card">
+        <div class="card-value">${summary.areas}</div>
+        <div class="card-label">Areas Analyzed</div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+      <div class="chart-panel">
+        <h3>Risk Heatmap — Areas x Severity</h3>
+        <div id="heatmapContainer"></div>
+      </div>
+      <div class="charts-sidebar">
+        <div class="chart-panel">
+          <h3>Severity Distribution</h3>
+          <div class="chart-canvas-wrap"><canvas id="donutChart"></canvas></div>
+        </div>
+        <div class="chart-panel">
+          <h3>Risk Domains</h3>
+          <div class="chart-canvas-wrap" style="max-height:${Math.max(180, domainStats.length * 28)}px">
+            <canvas id="domainChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Risk Table -->
+    <div class="table-section">
+      <h3>All Risks</h3>
+      <div class="table-filters">
+        <select id="filterSeverity">
+          <option value="">All Severities</option>
+          ${SEVERITY_ORDER.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+        <select id="filterArea">
+          <option value="">All Areas</option>
+          ${hm.areaNames.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('')}
+        </select>
+        <input type="text" id="filterSearch" placeholder="Search risks...">
+      </div>
+      <div style="overflow-x:auto">
+        <table class="risk-table">
+          <thead>
+            <tr>
+              <th data-col="severity" class="sorted-asc">Severity</th>
+              <th data-col="area">Area</th>
+              <th data-col="title">Risk</th>
+              <th data-col="confidence">Conf.</th>
+              <th>Domains</th>
+            </tr>
+          </thead>
+          <tbody id="riskTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <a href="https://github.com/abhi10/gremlin" target="_blank" rel="noopener">Gremlin</a>
+      v${esc(currentData.gremlin_version || '0.2.0')} &mdash; Exploratory QA Risk Analysis
+    </footer>
+  `;
+
+  renderHeatmap(hm);
+  renderDonutChart(summary);
+  renderDomainChart(domainStats);
+  renderRiskTable();
+  bindTableEvents();
+}
+
+// ── Heatmap Render ───────────────────────────────────────────────
+function renderHeatmap({ areaNames, grid, colMax }) {
+  const container = document.getElementById('heatmapContainer');
+  if (!container) return;
+
+  const cols = SEVERITY_ORDER.length;
+  let html = `<div class="heatmap-grid" style="grid-template-columns: minmax(160px,1.5fr) repeat(${cols},1fr)">`;
+
+  // Header row
+  html += `<div class="heatmap-header"></div>`;
+  for (const sev of SEVERITY_ORDER) {
+    html += `<div class="heatmap-header" style="color:${SEVERITY_COLORS[sev].hex}">${sev}</div>`;
+  }
+
+  // Data rows
+  for (const area of areaNames) {
+    const row = grid[area];
+    const totalForArea = SEVERITY_ORDER.reduce((s, sev) => s + row[sev], 0);
+    if (totalForArea === 0) continue;
+
+    html += `<div class="heatmap-area-label" title="${esc(area)}">${esc(area)}</div>`;
+    for (const sev of SEVERITY_ORDER) {
+      const count = row[sev];
+      const max = colMax[sev] || 1;
+      const intensity = count === 0 ? 0 : 0.2 + (Math.sqrt(count / max) * 0.8);
+      const { rgb } = SEVERITY_COLORS[sev];
+      const bg = count === 0 ? 'transparent' : `rgba(${rgb},${intensity.toFixed(2)})`;
+      const titles = row.risks[sev];
+      const tooltipHtml = titles.length
+        ? `<strong>${count} ${sev} risk${count > 1 ? 's' : ''}</strong><ul>${titles.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
+        : '';
+
+      html += `<div class="heatmap-cell" style="background:${bg}" data-count="${count}" data-area="${esc(area)}" data-severity="${sev}">
+        ${count || '&mdash;'}
+        ${tooltipHtml ? `<div class="heatmap-tooltip">${tooltipHtml}</div>` : ''}
+      </div>`;
+    }
+  }
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Click to filter table
+  container.querySelectorAll('.heatmap-cell[data-count]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      const count = parseInt(cell.dataset.count);
+      if (count === 0) return;
+      const sev = cell.dataset.severity;
+      const area = cell.dataset.area;
+      document.getElementById('filterSeverity').value = sev;
+      document.getElementById('filterArea').value = area;
+      tableFilters.severity = sev;
+      tableFilters.area = area;
+      renderRiskTable();
+      document.querySelector('.table-section').scrollIntoView({ behavior: 'smooth' });
+    });
+  });
+}
+
+// ── Donut Chart ──────────────────────────────────────────────────
+function renderDonutChart(summary) {
+  const ctx = document.getElementById('donutChart');
+  if (!ctx) return;
+  if (chartDonut) chartDonut.destroy();
+
+  chartDonut = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: SEVERITY_ORDER,
+      datasets: [{
+        data: SEVERITY_ORDER.map(s => summary[s]),
+        backgroundColor: SEVERITY_ORDER.map(s => SEVERITY_COLORS[s].hex),
+        borderWidth: 0,
+        hoverOffset: 6,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#94A3B8', padding: 12, font: { size: 11 }, usePointStyle: true, pointStyleWidth: 8 },
+        },
+        tooltip: {
+          backgroundColor: '#1E293B',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: '#334155',
+          borderWidth: 1,
+        },
+      },
+    },
+    plugins: [{
+      id: 'centerText',
+      afterDraw(chart) {
+        const { ctx: c, chartArea: { width, height, top, left } } = chart;
+        c.save();
+        c.font = 'bold 1.6rem -apple-system, sans-serif';
+        c.fillStyle = '#F8FAFC';
+        c.textAlign = 'center';
+        c.textBaseline = 'middle';
+        c.fillText(summary.total, left + width / 2, top + height / 2 - 6);
+        c.font = '0.65rem -apple-system, sans-serif';
+        c.fillStyle = '#64748B';
+        c.fillText('RISKS', left + width / 2, top + height / 2 + 14);
+        c.restore();
+      },
+    }],
+  });
+}
+
+// ── Domain Bar Chart ─────────────────────────────────────────────
+function renderDomainChart(domainStats) {
+  const ctx = document.getElementById('domainChart');
+  if (!ctx) return;
+  if (chartDomain) chartDomain.destroy();
+
+  const labels = domainStats.map(d => d[0]);
+  const values = domainStats.map(d => d[1]);
+
+  chartDomain = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: 'rgba(99,102,241,0.6)',
+        borderColor: '#6366F1',
+        borderWidth: 1,
+        borderRadius: 3,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1E293B',
+          titleColor: '#F8FAFC',
+          bodyColor: '#94A3B8',
+          borderColor: '#334155',
+          borderWidth: 1,
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(51,65,85,0.4)' },
+          ticks: { color: '#64748B', font: { size: 10 } },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: '#94A3B8', font: { size: 11 } },
+        },
+      },
+    },
+  });
+}
+
+// ── Risk Table ───────────────────────────────────────────────────
+function getFilteredRisks() {
+  let risks = [...allRisks];
+  if (tableFilters.severity) risks = risks.filter(r => r.severity === tableFilters.severity);
+  if (tableFilters.area) risks = risks.filter(r => r.area === tableFilters.area);
+  if (tableFilters.search) {
+    const q = tableFilters.search.toLowerCase();
+    risks = risks.filter(r =>
+      (r.title || '').toLowerCase().includes(q) ||
+      (r.scenario || '').toLowerCase().includes(q) ||
+      (r.impact || '').toLowerCase().includes(q)
+    );
+  }
+  // Sort
+  const sevIdx = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+  risks.sort((a, b) => {
+    let cmp = 0;
+    switch (tableSort.col) {
+      case 'severity': cmp = sevIdx[a.severity] - sevIdx[b.severity]; break;
+      case 'area': cmp = a.area.localeCompare(b.area); break;
+      case 'title': cmp = (a.title || '').localeCompare(b.title || ''); break;
+      case 'confidence': cmp = (b.confidence || 0) - (a.confidence || 0); break;
+    }
+    return tableSort.dir === 'desc' ? -cmp : cmp;
+  });
+  return risks;
+}
+
+function renderRiskTable() {
+  const tbody = document.getElementById('riskTableBody');
+  if (!tbody) return;
+  const risks = getFilteredRisks();
+
+  tbody.innerHTML = risks.map((r, i) => `
+    <tr data-idx="${i}" class="risk-row">
+      <td><span class="severity-badge severity-${r.severity}">${r.severity}</span></td>
+      <td>${esc(r.area)}</td>
+      <td>${esc(r.title || r.scenario?.slice(0, 80) || 'Untitled')}</td>
+      <td>
+        <span class="confidence-bar"><span class="confidence-bar-fill" style="width:${r.confidence || 0}%"></span></span>
+        ${r.confidence || 0}%
+      </td>
+      <td>${r.normalizedDomains.map(d => `<span class="domain-tag">${esc(d)}</span>`).join('')}</td>
+    </tr>
+    <tr class="risk-expand" data-idx="${i}">
+      <td colspan="5">
+        <div class="label">Scenario</div>
+        <div class="value">${esc(r.scenario || 'N/A')}</div>
+        <div class="label">Impact</div>
+        <div class="value">${esc(r.impact || 'N/A')}</div>
+      </td>
+    </tr>
+  `).join('');
+
+  // Expand/collapse
+  tbody.querySelectorAll('.risk-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const idx = row.dataset.idx;
+      const expandRow = tbody.querySelector(`.risk-expand[data-idx="${idx}"]`);
+      if (expandRow) expandRow.classList.toggle('open');
+    });
+  });
+}
+
+function bindTableEvents() {
+  // Filters
+  const fSev = document.getElementById('filterSeverity');
+  const fArea = document.getElementById('filterArea');
+  const fSearch = document.getElementById('filterSearch');
+  if (fSev) fSev.addEventListener('change', () => { tableFilters.severity = fSev.value; renderRiskTable(); });
+  if (fArea) fArea.addEventListener('change', () => { tableFilters.area = fArea.value; renderRiskTable(); });
+  if (fSearch) fSearch.addEventListener('input', () => { tableFilters.search = fSearch.value; renderRiskTable(); });
+
+  // Sort headers
+  document.querySelectorAll('.risk-table thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.col;
+      if (tableSort.col === col) {
+        tableSort.dir = tableSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        tableSort.col = col;
+        tableSort.dir = 'asc';
+      }
+      document.querySelectorAll('.risk-table thead th').forEach(h => h.classList.remove('sorted-asc', 'sorted-desc'));
+      th.classList.add(tableSort.dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      renderRiskTable();
+    });
+  });
+}
+
+// ── Data Loading ─────────────────────────────────────────────────
+async function loadFromCatalog() {
+  try {
+    const res = await fetch('data/catalog.json');
+    if (!res.ok) throw new Error('Catalog not found');
+    const catalog = await res.json();
+    const select = document.getElementById('projectSelect');
+    select.innerHTML = catalog.projects.map(p =>
+      `<option value="${esc(p.file)}">${esc(p.name)}</option>`
+    ).join('');
+    select.addEventListener('change', () => loadProject(select.value));
+
+    // Check URL param
+    const params = new URLSearchParams(window.location.search);
+    const fileParam = params.get('file');
+    if (fileParam) {
+      await loadProject(fileParam);
+    } else if (catalog.projects.length) {
+      await loadProject(catalog.projects[0].file);
+    }
+  } catch {
+    showEmpty('No data catalog found. Upload a Gremlin results JSON to get started.');
+  }
+}
+
+async function loadProject(filename) {
+  try {
+    document.getElementById('mainContent').innerHTML = '<div class="loading"><div class="loading-spinner"></div><div>Loading...</div></div>';
+    const url = filename.startsWith('http') ? filename : `data/${filename}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to load ${filename}`);
+    const data = await res.json();
+    processData(data);
+    tableFilters = { severity: '', area: '', search: '' };
+    tableSort = { col: 'severity', dir: 'asc' };
+    renderDashboard();
+  } catch (e) {
+    showEmpty(`Failed to load: ${e.message}`);
+  }
+}
+
+function loadFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data.areas || !Array.isArray(data.areas)) throw new Error('Invalid Gremlin results format');
+      processData(data);
+      tableFilters = { severity: '', area: '', search: '' };
+      tableSort = { col: 'severity', dir: 'asc' };
+      renderDashboard();
+      // Add to select
+      const select = document.getElementById('projectSelect');
+      if (select) {
+        const opt = document.createElement('option');
+        opt.value = '__uploaded__';
+        opt.textContent = `${data.target || file.name} (uploaded)`;
+        opt.selected = true;
+        select.appendChild(opt);
+      }
+    } catch (e) {
+      alert('Invalid JSON file: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function showEmpty(msg) {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="empty-state">
+      <h2>No Data Loaded</h2>
+      <p>${msg}</p>
+    </div>`;
+}
+
+// ── Utilities ────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = String(str);
+  return d.innerHTML;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'Unknown';
+  try {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch { return dateStr; }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  // File upload
+  document.getElementById('fileUpload').addEventListener('change', (e) => {
+    if (e.target.files[0]) loadFromFile(e.target.files[0]);
+  });
+
+  // Drag and drop
+  const overlay = document.getElementById('dropOverlay');
+  let dragCounter = 0;
+  document.addEventListener('dragenter', (e) => { e.preventDefault(); dragCounter++; overlay.classList.add('active'); });
+  document.addEventListener('dragleave', (e) => { e.preventDefault(); dragCounter--; if (dragCounter === 0) overlay.classList.remove('active'); });
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    overlay.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.json')) loadFromFile(file);
+  });
+
+  // Load catalog
+  loadFromCatalog();
+});
+</script>
+</body>
+</html>

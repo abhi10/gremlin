@@ -1,0 +1,54 @@
+name: Deploy Dashboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard/**'
+      - 'evals/critiques/**-results.json'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync results data
+        run: |
+          cp evals/critiques/*-results.json dashboard/data/ 2>/dev/null || true
+          python3 -c "
+          import json, glob
+          files = sorted(glob.glob('dashboard/data/*-results.json'))
+          projects = []
+          for f in files:
+              with open(f) as fh:
+                  d = json.load(fh)
+              name = f.split('/')[-1].replace('-results.json','')
+              projects.append({'id': name, 'name': d.get('target', name), 'file': f.split('/')[-1]})
+          json.dump({'projects': projects}, open('dashboard/data/catalog.json','w'), indent=2)
+          "
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dashboard
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

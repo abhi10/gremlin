@@ -1,0 +1,927 @@
+{
+  "target": "openclaw/openclaw",
+  "url": "https://github.com/openclaw/openclaw",
+  "date": "2026-02-15T22:30:00.000000",
+  "gremlin_version": "0.2.0",
+  "threshold": 70,
+  "depth": "deep",
+  "areas": [
+    {
+      "area": "WebSocket Gateway",
+      "context": "Node.js WebSocket server at ws://127.0.0.1:18789. Orchestrates channel connections, agent runtime, session management, and device node pairing.",
+      "result": {
+        "scope": "WebSocket gateway control plane for personal AI assistant",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if malicious client sends crafted WebSocket frames with claimed payload length of 2GB but only sends headers?",
+            "impact": "Node.js pre-allocates buffer based on claimed length, exhausting memory instantly. Gateway crashes, all AI assistant channels disconnect simultaneously.",
+            "domains": ["Resource Limits", "Input Validation"],
+            "title": "WebSocket Frame Bomb Attack"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if client reconnects with same session ID but different channel type (WhatsApp token reconnects claiming to be Telegram)?",
+            "impact": "Messages route to wrong platforms, personal data leaks across channels. User's WhatsApp messages could appear in their Slack workspace.",
+            "domains": ["State & Data", "Concurrency"],
+            "title": "Channel Identity Confusion During Reconnection"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 92,
+            "scenario": "What if network instability causes mass client disconnections, then all channels reconnect within same 2-second window, each sending heartbeat pings?",
+            "impact": "Thundering herd of heartbeat processing overwhelms event loop, new connections can't be established. Gateway becomes unreachable during critical reconnection period.",
+            "domains": ["Concurrency", "Resource Limits"],
+            "title": "Heartbeat Storm During Network Flap"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if multiple channels simultaneously send large binary attachments (images, files) that get buffered in memory before processing?",
+            "impact": "Memory spikes cause garbage collection pauses, all WebSocket connections timeout during GC freeze. Users see AI assistant as completely unresponsive.",
+            "domains": ["Resource Limits"],
+            "title": "Binary Frame Memory Exhaustion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if two devices attempt to pair with same user account simultaneously, both receiving pairing success before collision detection?",
+            "impact": "Both devices think they're paired, messages duplicate across devices, session state corrupts. User receives every AI response twice.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Device Pairing Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 83,
+            "scenario": "What if WebSocket connections close abnormally (network drops, client crashes) but session cleanup handlers never execute?",
+            "impact": "Session objects accumulate in memory indefinitely. After days of operation, gateway runs out of memory during peak usage periods.",
+            "domains": ["Resource Limits", "Error Paths"],
+            "title": "Session Management Memory Leak"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if AI agent processing hangs on synchronous operation (blocking file I/O, synchronous crypto) while handling user request?",
+            "impact": "Entire WebSocket gateway freezes, no heartbeats processed, all channels appear dead. Users think AI assistant crashed globally.",
+            "domains": ["External Dependencies", "Resource Limits"],
+            "title": "Agent Runtime Blocking Event Loop"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 87,
+            "scenario": "What if multiple developers run gateway locally on same port 18789, or production deployment conflicts with existing service?",
+            "impact": "Gateway fails to start silently or crashes with confusing EADDRINUSE error. All AI assistant functionality broken, difficult to diagnose in containerized environments.",
+            "domains": ["Configuration"],
+            "title": "Port Conflict During Development"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if client sends WebSocket upgrade request with crafted headers containing newlines or control characters that bypass validation?",
+            "impact": "Headers logged to files could corrupt log parsers, monitoring systems misinterpret connection metadata, potential header smuggling in downstream proxies.",
+            "domains": ["Input Validation", "Error Paths"],
+            "title": "WebSocket Upgrade Header Injection"
+          }
+        ],
+        "matched_domains": ["distributed", "auth", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 9,
+          "critical": 2,
+          "high": 4,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "# \ud83d\udd34 CRITICAL (95%)\n\n**WebSocket Frame Bomb Attack**\n\n> What if malicious client sends crafted WebSocket frames with claimed payload length of 2GB but only sends headers?\n\n- **Impact:** Node.js pre-allocates buffer based on claimed length, exhausting memory instantly. Gateway crashes, all AI assistant channels disconnect simultaneously.\n- **Domain:** Resource Limits + Input Validation\n\n---\n\n# \ud83d\udd34 CRITICAL (90%)\n\n**Channel Identity Confusion During Reconnection**\n\n> What if client reconnects with same session ID but different channel type (WhatsApp token reconnects claiming to be Telegram)?\n\n- **Impact:** Messages route to wrong platforms, personal data leaks across channels. User's WhatsApp messages could appear in their Slack workspace.\n- **Domain:** State & Data + Concurrency\n\n---\n\n# \ud83d\udfe0 HIGH (85%)\n\n**Binary Frame Memory Exhaustion**\n\n> What if multiple channels simultaneously send large binary attachments (images, files) that get buffered in memory before processing?\n\n- **Impact:** Memory spikes cause garbage collection pauses, all WebSocket connections timeout during GC freeze. Users see AI assistant as completely unresponsive.\n- **Domain:** Resource Limits\n\n---\n\n# \ud83d\udfe0 HIGH (88%)\n\n**Device Pairing Race Condition**\n\n> What if two devices attempt to pair with same user account simultaneously, both receiving pairing success before collision detection?\n\n- **Impact:** Both devices think they're paired, messages duplicate across devices, session state corrupts. User receives every AI response twice.\n- **Domain:** Concurrency + State & Data\n\n---\n\n# \ud83d\udfe0 HIGH (92%)\n\n**Heartbeat Storm During Network Flap**\n\n> What if network instability causes mass client disconnections, then all channels reconnect within same 2-second window, each sending heartbeat pings?\n\n- **Impact:** Thundering herd of heartbeat processing overwhelms event loop, new connections can't be established. Gateway becomes unreachable during critical reconnection period.\n- **Domain:** Concurrency + Resource Limits\n\n---\n\n# \ud83d\udfe0 HIGH (83%)\n\n**Session Management Memory Leak**\n\n> What if WebSocket connections close abnormally (network drops, client crashes) but session cleanup handlers never execute?\n\n- **Impact:** Session objects accumulate in memory indefinitely. After days of operation, gateway runs out of memory during peak usage periods.\n- **Domain:** Resource Limits + Error Paths\n\n---\n\n# \ud83d\udfe1 MEDIUM (85%)\n\n**Agent Runtime Blocking Event Loop**\n\n> What if AI agent processing hangs on synchronous operation (blocking file I/O, synchronous crypto) while handling user request?\n\n- **Impact:** Entire WebSocket gateway freezes, no heartbeats processed, all channels appear dead. Users think AI assistant crashed globally.\n- **Domain:** External Dependencies + Resource Limits\n\n---\n\n# \ud83d\udfe1 MEDIUM (87%)\n\n**Port Conflict During Development**\n\n> What if multiple developers run gateway locally on same port 18789, or production deployment conflicts with existing service?\n\n- **Impact:** Gateway fails to start silently or crashes with confusing EADDRINUSE error. All AI assistant functionality broken, difficult to diagnose in containerized environments.\n- **Domain:** Configuration\n\n---\n\n# \ud83d\udfe1 MEDIUM (82%)\n\n**WebSocket Upgrade Header Injection**\n\n> What if client sends WebSocket upgrade request with crafted headers containing newlines or control characters that bypass validation?\n\n- **Impact:** Headers logged to files could corrupt log parsers, monitoring systems misinterpret connection metadata, potential header smuggling in downstream proxies.\n- **Domain:** Input Validation + Error Paths"
+    },
+    {
+      "area": "Multi-Channel Messaging",
+      "context": "12+ messaging protocols bridged through unified inbox. Each channel has its own webhook signature verification, rate limits, retry semantics, and message format.",
+      "result": {
+        "scope": "Multi-channel messaging integration supporting WhatsApp, Telegram, Slack, Discord, Signal, iMessage, Teams, Matrix",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if attacker captures valid webhook payload and replays it with original signature after intercepting traffic?",
+            "impact": "Duplicate messages flood system, users receive spam, potential financial charges for outbound messages, trust erosion.",
+            "domains": ["External Dependencies", "Input Validation"],
+            "title": "Webhook Signature Replay Attack"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if message bridged from WhatsApp to Slack gets auto-forwarded back to WhatsApp, creating infinite relay?",
+            "impact": "Exponential message multiplication, API quota exhaustion, service suspension across all channels, potential billing disaster.",
+            "domains": ["Distributed", "State & Data"],
+            "title": "Cross-Channel Message Loop"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 95,
+            "scenario": "What if different channels' HMAC verification takes different execution times, allowing attackers to brute-force valid signatures through timing analysis?",
+            "impact": "Authentication bypass, spoofed messages injected, potential security breach affecting message integrity.",
+            "domains": ["Input Validation", "Error Paths"],
+            "title": "Signature Verification Timing Attack"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if hitting Telegram's rate limit causes message queue backup that triggers WhatsApp rate limits, cascading to all channels?",
+            "impact": "Complete messaging outage, messages lost or severely delayed, SLA violations.",
+            "domains": ["External Dependencies", "Resource Limits"],
+            "title": "Rate Limit Cascade Failure"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if Discord allows 8MB files but Telegram caps at 20MB, and system loads entire file into memory during format translation?",
+            "impact": "OOM crashes when bridging large media files, service instability affecting all users.",
+            "domains": ["Resource Limits", "External Dependencies"],
+            "title": "Adapter Memory Exhaustion on Large Media"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if network hiccup during WhatsApp webhook acknowledgment causes redelivery, but original message was already bridged to 6 other channels?",
+            "impact": "Duplicate messages across all connected channels, user confusion, potential spam violations.",
+            "domains": ["Distributed", "External Dependencies"],
+            "title": "At-Least-Once Delivery Duplication Storm"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 92,
+            "scenario": "What if iMessage sends NFD-normalized unicode but Matrix expects NFC, causing emoji/international text to break during bridging?",
+            "impact": "Corrupted messages, missing emoji, broken international communication, poor user experience.",
+            "domains": ["Input Validation", "State & Data"],
+            "title": "Unicode Normalization Mismatch"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 88,
+            "scenario": "What if attacker sends Discord payload to WhatsApp endpoint, and system validates RSA signature against HMAC-SHA256 key, causing unexpected behavior?",
+            "impact": "Authentication bypass possibility, incorrect message routing, potential injection of malicious payloads.",
+            "domains": ["Input Validation", "Configuration"],
+            "title": "Webhook Signature Algorithm Confusion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if Signal webhook includes timestamp validation window, but server clock drifts beyond acceptable range?",
+            "impact": "Valid messages rejected, intermittent failures hard to diagnose, gradual service degradation.",
+            "domains": ["External Dependencies", "Configuration"],
+            "title": "Clock Skew Timestamp Verification"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 83,
+            "scenario": "What if Slack adapter crashes mid-translation and leaves partial message in shared state, affecting subsequent Teams message processing?",
+            "impact": "Corrupted message bridging, users receive malformed content, cross-channel contamination.",
+            "domains": ["State & Data", "Concurrency"],
+            "title": "Adapter State Poisoning"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if Matrix federation responds slowly but holds HTTP connections open, exhausting pool for fast channels like Telegram?",
+            "impact": "Fast channels become unresponsive due to resource contention, uneven service degradation.",
+            "domains": ["Resource Limits", "External Dependencies"],
+            "title": "Connection Pool Starvation by Slow Channels"
+          },
+          {
+            "severity": "LOW",
+            "confidence": 85,
+            "scenario": "What if feature flag disables WhatsApp but unified inbox still shows WhatsApp contacts, allowing users to send messages that fail silently?",
+            "impact": "User confusion, messages appear sent but never deliver, difficult troubleshooting.",
+            "domains": ["Configuration", "Error Paths"],
+            "title": "Feature Flag Channel Isolation Failure"
+          }
+        ],
+        "matched_domains": ["distributed", "auth", "serialization", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 12,
+          "critical": 2,
+          "high": 4,
+          "medium": 5,
+          "low": 1
+        }
+      },
+      "raw_response": "## Risk Analysis: Multi-Channel Messaging Integration\n\n### \ud83d\udd34 CRITICAL (95%)\n\n**Webhook Signature Replay Attack**\n\n> What if attacker captures valid webhook payload and replays it with original signature after intercepting traffic?\n\n- **Impact:** Duplicate messages flood system, users receive spam, potential financial charges for outbound messages, trust erosion\n- **Domain:** External Dependencies + Input Validation\n\n### \ud83d\udd34 CRITICAL (90%)\n\n**Cross-Channel Message Loop**\n\n> What if message bridged from WhatsApp to Slack gets auto-forwarded back to WhatsApp, creating infinite relay?\n\n- **Impact:** Exponential message multiplication, API quota exhaustion, service suspension across all channels, potential billing disaster\n- **Domain:** Distributed + State & Data\n\n### \ud83d\udfe0 HIGH (95%)\n\n**Signature Verification Timing Attack**\n\n> What if different channels' HMAC verification takes different execution times, allowing attackers to brute-force valid signatures through timing analysis?\n\n- **Impact:** Authentication bypass, spoofed messages injected, potential security breach affecting message integrity\n- **Domain:** Input Validation + Error Paths\n\n### \ud83d\udfe0 HIGH (90%)\n\n**Rate Limit Cascade Failure**\n\n> What if hitting Telegram's rate limit causes message queue backup that triggers WhatsApp rate limits, cascading to all channels?\n\n- **Impact:** Complete messaging outage, messages lost or severely delayed, SLA violations\n- **Domain:** External Dependencies + Resource Limits\n\n### \ud83d\udfe0 HIGH (88%)\n\n**Adapter Memory Exhaustion on Large Media**\n\n> What if Discord allows 8MB files but Telegram caps at 20MB, and system loads entire file into memory during format translation?\n\n- **Impact:** OOM crashes when bridging large media files, service instability affecting all users\n- **Domain:** Resource Limits + External Dependencies\n\n### \ud83d\udfe0 HIGH (85%)\n\n**At-Least-Once Delivery Duplication Storm**\n\n> What if network hiccup during WhatsApp webhook acknowledgment causes redelivery, but original message was already bridged to 6 other channels?\n\n- **Impact:** Duplicate messages across all connected channels, user confusion, potential spam violations\n- **Domain:** Distributed + External Dependencies\n\n### \ud83d\udfe1 MEDIUM (92%)\n\n**Unicode Normalization Mismatch**\n\n> What if iMessage sends NFD-normalized unicode but Matrix expects NFC, causing emoji/international text to break during bridging?\n\n- **Impact:** Corrupted messages, missing emoji, broken international communication, poor user experience\n- **Domain:** Input Validation + State & Data\n\n### \ud83d\udfe1 MEDIUM (88%)\n\n**Webhook Signature Algorithm Confusion**\n\n> What if attacker sends Discord payload to WhatsApp endpoint, and system validates RSA signature against HMAC-SHA256 key, causing unexpected behavior?\n\n- **Impact:** Authentication bypass possibility, incorrect message routing, potential injection of malicious payloads\n- **Domain:** Input Validation + Configuration\n\n### \ud83d\udfe1 MEDIUM (85%)\n\n**Clock Skew Timestamp Verification**\n\n> What if Signal webhook includes timestamp validation window, but server clock drifts beyond acceptable range?\n\n- **Impact:** Valid messages rejected, intermittent failures hard to diagnose, gradual service degradation\n- **Domain:** External Dependencies + Configuration\n\n### \ud83d\udfe1 MEDIUM (83%)\n\n**Adapter State Poisoning**\n\n> What if Slack adapter crashes mid-translation and leaves partial message in shared state, affecting subsequent Teams message processing?\n\n- **Impact:** Corrupted message bridging, users receive malformed content, cross-channel contamination\n- **Domain:** State & Data + Concurrency\n\n### \ud83d\udfe1 MEDIUM (82%)\n\n**Connection Pool Starvation by Slow Channels**\n\n> What if Matrix federation responds slowly but holds HTTP connections open, exhausting pool for fast channels like Telegram?\n\n- **Impact:** Fast channels become unresponsive due to resource contention, uneven service degradation\n- **Domain:** Resource Limits + External Dependencies\n\n### \ud83d\udfe2 LOW (85%)\n\n**Feature Flag Channel Isolation Failure**\n\n> What if feature flag disables WhatsApp but unified inbox still shows WhatsApp contacts, allowing users to send messages that fail silently?\n\n- **Impact:** User confusion, messages appear sent but never deliver, difficult troubleshooting\n- **Domain:** Configuration + Error Paths"
+    },
+    {
+      "area": "AI Agent Runtime & Tool Execution",
+      "context": "Node.js agent runtime executing tools (browser control, device actions, cron jobs, webhooks). Supports Anthropic Claude and OpenAI models. Skills registry (ClawHub) allows hot-reloading.",
+      "result": {
+        "scope": "AI agent runtime with tool execution and skills registry",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if a dynamically loaded skill from ClawHub executes with higher privileges than intended?",
+            "impact": "Arbitrary code execution, system compromise, data exfiltration through browser automation or device actions.",
+            "domains": ["External Dependencies", "Configuration"],
+            "title": "Tool Execution Privilege Escalation"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if the AI model crafts tool parameters that break out of intended sandboxing (shell injection through browser automation commands)?",
+            "impact": "Command execution on host system, especially dangerous with device actions and cron job tools.",
+            "domains": ["Input Validation", "External Dependencies"],
+            "title": "AI Model Injection via Tool Parameters"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 92,
+            "scenario": "What if a skill is hot-reloaded while the agent is mid-execution using that skill's functions?",
+            "impact": "Runtime crashes, partial state corruption, agent stuck in undefined state requiring restart.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Skills Hot-Reload Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if a tool spawns async operations (browser tabs, background processes) that outlive the timeout?",
+            "impact": "Resource leakage, zombie processes accumulating over time, eventual system resource exhaustion.",
+            "domains": ["Resource Limits", "Error Paths"],
+            "title": "Tool Timeout Bypass via Async Operations"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if circular dependencies exist in workflow tool ordering, or sequential tools wait on resources held by parallel tools?",
+            "impact": "Agent hangs indefinitely, workflow never completes, requires manual intervention.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Workflow Dependency Deadlock"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 83,
+            "scenario": "What if ClawHub serves malicious skill updates that pass validation but contain backdoors?",
+            "impact": "Persistent compromise of agent capabilities, data theft through legitimate-looking tools.",
+            "domains": ["External Dependencies", "Input Validation"],
+            "title": "ClawHub Registry Poisoning"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if a browser automation tool captures massive DOM content or device action generates huge logs, exhausting memory during serialization?",
+            "impact": "OOM crash affecting all agent instances, DoS through crafted web pages or device states.",
+            "domains": ["Resource Limits", "Input Validation"],
+            "title": "Tool Result Serialization Memory Bomb"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 87,
+            "scenario": "What if accumulated tool results exceed the model's context window mid-workflow?",
+            "impact": "Silent truncation of critical context, agent makes decisions based on incomplete information.",
+            "domains": ["External Dependencies", "State & Data"],
+            "title": "AI Model Context Window Overflow"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if webhook tools don't implement idempotency and external systems replay webhook deliveries?",
+            "impact": "Duplicate actions (multiple browser sessions, repeated device commands), cascading side effects.",
+            "domains": ["Error Paths", "External Dependencies"],
+            "title": "Webhook Replay Attack Amplification"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if ClawHub returns HTTP 304 Not Modified but skill definition actually changed, causing stale cached skills to persist?",
+            "impact": "Agent uses outdated skill implementations, workflow failures that are hard to diagnose.",
+            "domains": ["State & Data", "External Dependencies"],
+            "title": "Skills Registry Cache Poisoning"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 81,
+            "scenario": "What if AI model outputs evolve faster than tool parameter schemas, causing validation mismatches for previously working workflows?",
+            "impact": "Previously successful workflows start failing, agent capabilities degrade over time without obvious cause.",
+            "domains": ["Input Validation", "External Dependencies"],
+            "title": "Tool Parameter Validation Schema Drift"
+          }
+        ],
+        "matched_domains": ["distributed", "deployment", "serialization"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 11,
+          "critical": 2,
+          "high": 4,
+          "medium": 5,
+          "low": 0
+        }
+      },
+      "raw_response": "# Risk Analysis: AI Agent Runtime\n\n## \ud83d\udd34 CRITICAL (95%)\n\n**Tool Execution Privilege Escalation**\n\n> What if a dynamically loaded skill from ClawHub executes with higher privileges than intended?\n\n- **Impact:** Arbitrary code execution, system compromise, data exfiltration through browser automation or device actions\n- **Domain:** External Dependencies + Configuration\n\n## \ud83d\udd34 CRITICAL (90%)\n\n**AI Model Injection via Tool Parameters**\n\n> What if the AI model crafts tool parameters that break out of intended sandboxing (shell injection through browser automation commands)?\n\n- **Impact:** Command execution on host system, especially dangerous with device actions and cron job tools\n- **Domain:** Input Validation + External Dependencies\n\n## \ud83d\udfe0 HIGH (92%)\n\n**Skills Hot-Reload Race Condition**\n\n> What if a skill is hot-reloaded while the agent is mid-execution using that skill's functions?\n\n- **Impact:** Runtime crashes, partial state corruption, agent stuck in undefined state requiring restart\n- **Domain:** Concurrency + State & Data\n\n## \ud83d\udfe0 HIGH (88%)\n\n**Tool Timeout Bypass via Async Operations**\n\n> What if a tool spawns async operations (browser tabs, background processes) that outlive the timeout?\n\n- **Impact:** Resource leakage, zombie processes accumulating over time, eventual system resource exhaustion\n- **Domain:** Resource Limits + Error Paths\n\n## \ud83d\udfe0 HIGH (85%)\n\n**Workflow Dependency Deadlock**\n\n> What if circular dependencies exist in workflow tool ordering, or sequential tools wait on resources held by parallel tools?\n\n- **Impact:** Agent hangs indefinitely, workflow never completes, requires manual intervention\n- **Domain:** Concurrency + State & Data\n\n## \ud83d\udfe0 HIGH (83%)\n\n**ClawHub Registry Poisoning**\n\n> What if ClawHub serves malicious skill updates that pass validation but contain backdoors?\n\n- **Impact:** Persistent compromise of agent capabilities, data theft through legitimate-looking tools\n- **Domain:** External Dependencies + Input Validation\n\n## \ud83d\udfe1 MEDIUM (90%)\n\n**Tool Result Serialization Memory Bomb**\n\n> What if a browser automation tool captures massive DOM content or device action generates huge logs, exhausting memory during serialization?\n\n- **Impact:** OOM crash affecting all agent instances, DoS through crafted web pages or device states\n- **Domain:** Resource Limits + Input Validation\n\n## \ud83d\udfe1 MEDIUM (87%)\n\n**AI Model Context Window Overflow**\n\n> What if accumulated tool results exceed the model's context window mid-workflow?\n\n- **Impact:** Silent truncation of critical context, agent makes decisions based on incomplete information\n- **Domain:** External Dependencies + State & Data\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Webhook Replay Attack Amplification**\n\n> What if webhook tools don't implement idempotency and external systems replay webhook deliveries?\n\n- **Impact:** Duplicate actions (multiple browser sessions, repeated device commands), cascading side effects\n- **Domain:** Error Paths + External Dependencies\n\n## \ud83d\udfe1 MEDIUM (82%)\n\n**Skills Registry Cache Poisoning**\n\n> What if ClawHub returns HTTP 304 Not Modified but skill definition actually changed, causing stale cached skills to persist?\n\n- **Impact:** Agent uses outdated skill implementations, workflow failures that are hard to diagnose\n- **Domain:** State & Data + External Dependencies\n\n## \ud83d\udfe1 MEDIUM (81%)\n\n**Tool Parameter Validation Schema Drift**\n\n> What if AI model outputs evolve faster than tool parameter schemas, causing validation mismatches for previously working workflows?\n\n- **Impact:** Previously successful workflows start failing, agent capabilities degrade over time without obvious cause\n- **Domain:** Input Validation + External Dependencies"
+    },
+    {
+      "area": "Voice & Audio Processing",
+      "context": "Always-on voice wake detection on macOS, iOS, Android. ElevenLabs integration for TTS. Audio buffering, stream handling, concurrent voice sessions.",
+      "result": {
+        "scope": "Voice wake and talk mode for personal AI assistant",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if continuous audio buffering without proper bounds checking causes memory exhaustion during extended conversations?",
+            "impact": "Application crash, device freeze, data loss of conversation history. Affects all voice features until restart.",
+            "domains": ["Resource Limits"],
+            "title": "Audio Buffer Overflow on Long Sessions"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if wake word detection triggers during private conversations, phone calls, or meetings, inadvertently recording and transmitting sensitive audio to processing servers?",
+            "impact": "Privacy breach, potential legal liability, loss of user trust. Audio could contain passwords, personal details, business secrets.",
+            "domains": ["Input Validation"],
+            "title": "Wake Word False Positives with Sensitive Audio"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if user switches audio devices (Bluetooth headphones disconnect, AirPods battery dies) during active voice session, causing audio stream to route to unexpected output device?",
+            "impact": "Private AI responses broadcast through laptop speakers in public/office, conversation context lost, user confusion.",
+            "domains": ["State & Data"],
+            "title": "Audio Device Switching Mid-Stream"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if rapid-fire voice interactions exceed ElevenLabs rate limits, causing TTS responses to fail silently or queue indefinitely?",
+            "impact": "User perceives AI as broken/unresponsive, conversation flow disrupted, potential user abandonment during critical interactions.",
+            "domains": ["External Dependencies"],
+            "title": "ElevenLabs Rate Limiting During Conversation Bursts"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if user activates voice assistant simultaneously on iPhone and Mac, creating competing audio streams and conflicting wake word detection states?",
+            "impact": "Duplicate API calls to ElevenLabs (billing waste), audio feedback loops, session state corruption, user confusion about which device is responding.",
+            "domains": ["Concurrency"],
+            "title": "Concurrent Device Session Conflicts"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if the ElevenLabs API key remains in plaintext memory and gets exposed through crash dumps, debugging tools, or memory inspection on compromised devices?",
+            "impact": "Unauthorized API usage, potential billing fraud, service disruption when keys are revoked.",
+            "domains": ["Configuration"],
+            "title": "ElevenLabs API Key Exposure in Memory Dumps"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if transcoded audio formats between iOS/Android/macOS create subtle quality degradation that affects wake word detection accuracy over time?",
+            "impact": "Decreasing wake word sensitivity, user frustration with broken voice activation, increased false negatives requiring manual activation.",
+            "domains": ["Input Validation"],
+            "title": "Audio Format Incompatibility Between Platforms"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if mobile device switches between WiFi/cellular during voice transmission to ElevenLabs, corrupting the audio stream and causing TTS generation to fail with partial/garbled input?",
+            "impact": "AI generates nonsensical responses, user conversation context lost, potential infinite retry loops if error handling is inadequate.",
+            "domains": ["External Dependencies"],
+            "title": "Audio Stream Corruption During Network Handoff"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if other apps (Zoom, Spotify, gaming) claim exclusive audio device access while voice assistant is in always-on mode, causing microphone access to fail silently?",
+            "impact": "Wake word detection stops working without user awareness, missed voice commands, degraded user experience.",
+            "domains": ["External Dependencies"],
+            "title": "Background App Audio Interference"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if always-on wake word processing on mobile devices causes significant battery drain, especially with background ML model inference running continuously?",
+            "impact": "Device battery life severely impacted, user disables feature, reduced adoption of voice functionality.",
+            "domains": ["Resource Limits"],
+            "title": "Wake Word Detection CPU Drain"
+          }
+        ],
+        "matched_domains": ["auth", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 4,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "# Gremlin Risk Analysis: Voice Wake & Talk Mode\n\n## \ud83d\udd34 CRITICAL (95%)\n\n**Audio Buffer Overflow on Long Sessions**\n\n> What if continuous audio buffering without proper bounds checking causes memory exhaustion during extended conversations?\n\n- **Impact:** Application crash, device freeze, data loss of conversation history. Affects all voice features until restart.\n- **Domain:** Resource Limits\n\n## \ud83d\udd34 CRITICAL (90%)\n\n**Wake Word False Positives with Sensitive Audio**\n\n> What if wake word detection triggers during private conversations, phone calls, or meetings, inadvertently recording and transmitting sensitive audio to processing servers?\n\n- **Impact:** Privacy breach, potential legal liability, loss of user trust. Audio could contain passwords, personal details, business secrets.\n- **Domain:** Input Validation\n\n## \ud83d\udfe0 HIGH (85%)\n\n**ElevenLabs API Key Exposure in Memory Dumps**\n\n> What if the ElevenLabs API key remains in plaintext memory and gets exposed through crash dumps, debugging tools, or memory inspection on compromised devices?\n\n- **Impact:** Unauthorized API usage, potential billing fraud, service disruption when keys are revoked.\n- **Domain:** Configuration\n\n## \ud83d\udfe0 HIGH (90%)\n\n**Audio Device Switching Mid-Stream**\n\n> What if user switches audio devices (Bluetooth headphones disconnect, AirPods battery dies) during active voice session, causing audio stream to route to unexpected output device?\n\n- **Impact:** Private AI responses broadcast through laptop speakers in public/office, conversation context lost, user confusion.\n- **Domain:** State & Data\n\n## \ud83d\udfe0 HIGH (85%)\n\n**Concurrent Device Session Conflicts**\n\n> What if user activates voice assistant simultaneously on iPhone and Mac, creating competing audio streams and conflicting wake word detection states?\n\n- **Impact:** Duplicate API calls to ElevenLabs (billing waste), audio feedback loops, session state corruption, user confusion about which device is responding.\n- **Domain:** Concurrency\n\n## \ud83d\udfe0 HIGH (88%)\n\n**ElevenLabs Rate Limiting During Conversation Bursts**\n\n> What if rapid-fire voice interactions exceed ElevenLabs rate limits, causing TTS responses to fail silently or queue indefinitely?\n\n- **Impact:** User perceives AI as broken/unresponsive, conversation flow disrupted, potential user abandonment during critical interactions.\n- **Domain:** External Dependencies\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Audio Format Incompatibility Between Platforms**\n\n> What if transcoded audio formats between iOS/Android/macOS create subtle quality degradation that affects wake word detection accuracy over time?\n\n- **Impact:** Decreasing wake word sensitivity, user frustration with broken voice activation, increased false negatives requiring manual activation.\n- **Domain:** Input Validation\n\n## \ud83d\udfe1 MEDIUM (82%)\n\n**Background App Audio Interference**\n\n> What if other apps (Zoom, Spotify, gaming) claim exclusive audio device access while voice assistant is in always-on mode, causing microphone access to fail silently?\n\n- **Impact:** Wake word detection stops working without user awareness, missed voice commands, degraded user experience.\n- **Domain:** External Dependencies\n\n## \ud83d\udfe1 MEDIUM (80%)\n\n**Wake Word Detection CPU Drain**\n\n> What if always-on wake word processing on mobile devices causes significant battery drain, especially with background ML model inference running continuously?\n\n- **Impact:** Device battery life severely impacted, user disables feature, reduced adoption of voice functionality.\n- **Domain:** Resource Limits\n\n## \ud83d\udfe1 MEDIUM (85%)\n\n**Audio Stream Corruption During Network Handoff**\n\n> What if mobile device switches between WiFi/cellular during voice transmission to ElevenLabs, corrupting the audio stream and causing TTS generation to fail with partial/garbled input?\n\n- **Impact:** AI generates nonsensical responses, user conversation context lost, potential infinite retry loops if error handling is inadequate.\n- **Domain:** External Dependencies"
+    },
+    {
+      "area": "Device Pairing & Management",
+      "context": "Cross-platform device nodes connected via WebSocket + Tailscale. Device claim/unclaim, session invalidation, credential rotation.",
+      "result": {
+        "scope": "Device pairing and management across iOS, Android, macOS",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if certificate rotation happens while device is mid-pairing and the old cert gets cached across the distributed system?",
+            "impact": "Device permanently orphaned with invalid credentials, requiring manual intervention or full re-setup.",
+            "domains": ["State & Data", "Concurrency"],
+            "title": "Credential Rotation Race Condition"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if network failure during device cleanup leaves Tailscale node keys active for orphaned sessions that never properly deregistered?",
+            "impact": "Zombie devices retain remote network access indefinitely. Former employees or compromised devices maintain backdoor access.",
+            "domains": ["External Dependencies", "Infrastructure"],
+            "title": "Tailscale Key Compromise During Network Failures"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 92,
+            "scenario": "What if iOS app goes to background during WebSocket reconnection while macOS menu bar app claims the same device identity?",
+            "impact": "Two platforms think they own the same device. Commands sent to wrong endpoint, session state corruption.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Cross-Platform Session State Desynchronization"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if intermediate certificates in the WebSocket TLS chain expire but root validation still passes, causing some platforms to reject connection?",
+            "impact": "Platform-specific connection failures. iOS might connect while Android fails, creating inconsistent device availability.",
+            "domains": ["Infrastructure", "Configuration"],
+            "title": "WebSocket Gateway Certificate Chain Validation"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if malicious actor sends crafted pairing requests to enumerate device capabilities and fingerprint internal network topology through Tailscale responses?",
+            "impact": "Network reconnaissance, device fingerprinting, potential lateral movement preparation.",
+            "domains": ["Input Validation", "External Dependencies"],
+            "title": "Device Capability Enumeration Attack"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if cleanup job fails on one orphaned session and blocks processing of subsequent orphaned sessions in the batch?",
+            "impact": "Growing accumulation of zombie sessions, memory leaks, eventual resource exhaustion.",
+            "domains": ["Error Paths", "Resource Limits"],
+            "title": "Orphaned Session Cleanup Cascade Failure"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 87,
+            "scenario": "What if two users attempt to claim the same unclaimed device simultaneously through different platform apps?",
+            "impact": "Device gets double-claimed with inconsistent ownership state. Support tickets required to resolve.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Concurrent Device Claiming Race"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 83,
+            "scenario": "What if iOS companion app gets updated with new session state fields but macOS menu bar app still uses old schema, causing silent data truncation?",
+            "impact": "Feature degradation, settings don't sync properly between platforms.",
+            "domains": ["External Dependencies", "State & Data"],
+            "title": "Platform-Specific JSON Schema Drift"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if all devices attempt WebSocket reconnection simultaneously after gateway restart, overwhelming the authentication service?",
+            "impact": "Sustained load spikes. Some devices never reconnect, requiring manual intervention.",
+            "domains": ["Infrastructure", "Resource Limits"],
+            "title": "WebSocket Reconnection Storm During Mass Restarts"
+          },
+          {
+            "severity": "LOW",
+            "confidence": 84,
+            "scenario": "What if Tailscale API keys are loaded at import time before Docker containers have environment variables set, causing silent fallback to localhost-only mode?",
+            "impact": "Remote access silently disabled. Users can pair devices but can't access them remotely.",
+            "domains": ["Configuration", "External Dependencies"],
+            "title": "Tailscale Integration Environment Variable Mismatch"
+          }
+        ],
+        "matched_domains": ["auth", "deployment", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 3,
+          "medium": 4,
+          "low": 1
+        }
+      },
+      "raw_response": "# Device Pairing Risk Analysis\n\n## \ud83d\udd34 CRITICAL (95%)\n\n**Credential Rotation Race Condition**\n\n> What if certificate rotation happens while device is mid-pairing and the old cert gets cached across the distributed system?\n\n- **Impact:** Device permanently orphaned with invalid credentials, requiring manual intervention or full re-setup.\n- **Domain:** State & Data + Concurrency\n\n## \ud83d\udd34 CRITICAL (90%)\n\n**Tailscale Key Compromise During Network Failures**\n\n> What if network failure during device cleanup leaves Tailscale node keys active for orphaned sessions that never properly deregistered?\n\n- **Impact:** Zombie devices retain remote network access indefinitely. Former employees or compromised devices maintain backdoor access.\n- **Domain:** External Dependencies + Infrastructure"
+    },
+    {
+      "area": "Session Persistence & State",
+      "context": "Local-first architecture with session persistence across gateway restarts. Workspace stored at ~/.openclaw/workspace.",
+      "result": {
+        "scope": "Session persistence and state management",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if malicious code creates symlinks in ~/.openclaw/workspace pointing to sensitive system files (/etc/passwd, ~/.ssh/keys)?",
+            "impact": "Agent configuration loading could read/expose sensitive files, or writing could corrupt system files. Complete system compromise possible.",
+            "domains": ["Infrastructure", "State & Data"],
+            "title": "Workspace Directory Takeover"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if an attacker restores an old session backup containing elevated permissions or different workspace configuration after user privileges were revoked?",
+            "impact": "Privilege escalation, access to tools/agents they shouldn't have, bypassing security controls.",
+            "domains": ["Auth", "State & Data"],
+            "title": "Session Resurrection Attack"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if the same user opens sessions on two devices, and both try to persist conflicting agent states to the same workspace?",
+            "impact": "Agent state corruption, lost conversation history, tool executions in wrong context.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Cross-Device Session Collision"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if gateway restarts while thousands of sessions are being restored simultaneously, each loading large conversation histories?",
+            "impact": "Memory exhaustion during startup, gateway fails to start, all users locked out.",
+            "domains": ["Infrastructure", "Resource Limits"],
+            "title": "Gateway Restart Memory Exhaustion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 84,
+            "scenario": "What if session cleanup fails to release file handles or database connections from expired sessions?",
+            "impact": "Gradual resource exhaustion over time, eventually preventing new sessions from starting.",
+            "domains": ["Resource Limits", "State & Data"],
+            "title": "Orphaned Session Resource Leak"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 83,
+            "scenario": "What if session migration partially completes during database upgrade, leaving some sessions with old schema references?",
+            "impact": "Mixed-state sessions cause runtime errors, data inconsistency between old/new format.",
+            "domains": ["State & Data", "Configuration"],
+            "title": "Database Migration State Corruption"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 87,
+            "scenario": "What if ~/.openclaw/workspace permissions change between sessions, making configuration unreadable?",
+            "impact": "Sessions fail to start, agent configurations lost. Particularly bad on shared systems.",
+            "domains": ["Infrastructure", "State & Data"],
+            "title": "Workspace Permission Drift"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if a long-running session's tool execution context gets corrupted by failed operations, but session persistence saves this bad state?",
+            "impact": "Tool executions fail mysteriously on session restore.",
+            "domains": ["State & Data", "Error Paths"],
+            "title": "Tool Context Poisoning"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 81,
+            "scenario": "What if user tries to start new session while database migration is in progress?",
+            "impact": "Session in undefined state, potential data loss on next persist.",
+            "domains": ["Concurrency", "State & Data"],
+            "title": "Session Migration Race Window"
+          }
+        ],
+        "matched_domains": ["auth", "database", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 9,
+          "critical": 2,
+          "high": 4,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "# Risk Analysis: Session Persistence and State Management\n\n## \ud83d\udd34 CRITICAL (95%)\n\n**Workspace Directory Takeover**\n\n> What if malicious code creates symlinks in ~/.openclaw/workspace pointing to sensitive system files (/etc/passwd, ~/.ssh/keys)?\n\n- **Impact:** Agent configuration loading could read/expose sensitive files, or writing could corrupt system files. Complete system compromise possible.\n- **Domain:** Infrastructure + State"
+    },
+    {
+      "area": "Cron Jobs, Webhooks & Event Scheduling",
+      "context": "Built-in cron job scheduler, webhook endpoints for channel events, event-driven pub/sub, retry logic with exponential backoff, dead letter handling.",
+      "result": {
+        "scope": "Cron jobs, webhooks, and event scheduling",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if webhook failures accumulate faster than dead letter processing capacity, causing unbounded queue growth until system OOM crash?",
+            "impact": "Complete system failure affecting all users, potential data loss of legitimate webhook events.",
+            "domains": ["Resource Limits", "Distributed"],
+            "title": "Dead Letter Queue Resource Exhaustion"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if signature verification uses timing-unsafe comparison and attacker can craft requests to bypass verification through timing attacks?",
+            "impact": "Complete webhook authentication bypass, allowing malicious actors to inject arbitrary events.",
+            "domains": ["Infrastructure", "External Dependencies"],
+            "title": "Webhook Signature Verification Race Condition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 95,
+            "scenario": "What if multiple webhook endpoints fail simultaneously and all consumers retry with synchronized exponential backoff timers?",
+            "impact": "Amplified load on failing services preventing recovery, cascading failures across providers.",
+            "domains": ["Distributed", "External Dependencies"],
+            "title": "Exponential Backoff Thundering Herd"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if webhook signature verification doesn't include timestamp validation, allowing attackers to replay valid old webhooks indefinitely?",
+            "impact": "Duplicate processing of old events, data corruption from time-sensitive operations.",
+            "domains": ["External Dependencies", "State & Data"],
+            "title": "Webhook Replay Attack Window"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 88,
+            "scenario": "What if multiple webhook consumers process related events out of order (message edit before message create)?",
+            "impact": "Inconsistent application state, phantom data references, impossible UI states.",
+            "domains": ["Distributed", "Concurrency"],
+            "title": "Concurrent Webhook Consumer State Corruption"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if system clock gradually drifts and cron jobs start executing at unexpected intervals?",
+            "impact": "Critical maintenance tasks execute incorrectly, data inconsistency.",
+            "domains": ["Distributed", "Infrastructure"],
+            "title": "Cron Job Clock Skew Drift"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 92,
+            "scenario": "What if webhook handlers assume JSON content-type but receive form-encoded or XML payloads?",
+            "impact": "Webhook processing failures, potential security bypass if error handling doesn't re-verify signatures.",
+            "domains": ["Input Validation", "External Dependencies"],
+            "title": "Webhook Content-Type Confusion"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if pub/sub system uses weak deduplication keys that collide during high-frequency events?",
+            "impact": "Lost business events, inconsistent state updates during rapid interactions.",
+            "domains": ["Distributed", "State & Data"],
+            "title": "Event Deduplication Key Collision"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if cron jobs spawn subprocesses that don't properly clean up when parent job times out?",
+            "impact": "Slow resource leak leading to eventual system degradation.",
+            "domains": ["Resource Limits", "Infrastructure"],
+            "title": "Cron Job Zombie Process Accumulation"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 83,
+            "scenario": "What if dead letter queue processing itself fails and creates new dead letter entries?",
+            "impact": "Infinite retry loops consuming processing capacity.",
+            "domains": ["Error Paths", "Distributed"],
+            "title": "Dead Letter Queue Poison Message Loop"
+          }
+        ],
+        "matched_domains": ["distributed", "deployment", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 4,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "## Risk Analysis: Cron Jobs, Webhooks, and Event Scheduling\n\n### \ud83d\udd34 CRITICAL (85%)\n\n**Webhook Signature Verification Race Condition**\n\n> What if signature verification uses timing-unsafe comparison and attacker can craft requests to bypass verification through timing attacks?\n\n- **Impact:** Complete webhook authentication bypass, allowing malicious actors to inject arbitrary events into the system\n- **Domain:** Infrastructure + External Dependencies"
+    },
+    {
+      "area": "Docker Deployment & Infrastructure",
+      "context": "Docker Compose deployment with Node.js 22+, Tailscale integration, SSH tunnels, signal handling, multi-container orchestration.",
+      "result": {
+        "scope": "Docker deployment and infrastructure",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 95,
+            "scenario": "What if Tailscale Funnel exposes internal container ports directly to the internet, bypassing Docker's network isolation?",
+            "impact": "Internal services (databases, admin panels) become publicly accessible without authentication. Complete security perimeter breach.",
+            "domains": ["Infrastructure"],
+            "title": "Tailscale Funnel Bypasses Container Network Security"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if SIGTERM arrives while containers are mid-transaction during Docker Compose restart?",
+            "impact": "Data corruption across multiple containers, inconsistent state between services that's hard to detect and recover from.",
+            "domains": ["Infrastructure"],
+            "title": "Signal Handling Race During Container Orchestration"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 95,
+            "scenario": "What if .env files contain attacker-controlled values that override SSL_CERT_DIR or other security-critical environment variables?",
+            "impact": "Complete TLS bypass, potential RCE if malicious certificates are loaded.",
+            "domains": ["Deployment"],
+            "title": "Environment Variable Injection Through .env File Manipulation"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if WebSocket connections on port 18789 accumulate without proper cleanup during container restarts?",
+            "impact": "New connections fail, application becomes unresponsive. Requires manual intervention.",
+            "domains": ["Infrastructure"],
+            "title": "Port 18789 WebSocket Connection Exhaustion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if SSH tunnel disconnects during a long-running operation but the application doesn't detect the failure?",
+            "impact": "Operations appear successful but data never reaches destination. Silent data loss.",
+            "domains": ["Infrastructure"],
+            "title": "SSH Tunnel Breaks During Network Partition"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if restart policy causes failing containers to restart rapidly, overwhelming healthy containers?",
+            "impact": "Entire stack becomes unstable as healthy services get overwhelmed by restart storms.",
+            "domains": ["Infrastructure"],
+            "title": "Container Restart Policy Amplifies Cascading Failures"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 90,
+            "scenario": "What if Docker Compose recreates containers but service discovery still points to old container IPs for 30+ seconds?",
+            "impact": "Intermittent 502/503 errors during deployment window.",
+            "domains": ["Infrastructure"],
+            "title": "Service Discovery Lag After Container Recreation"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if Tailscale client reconnects but gets different IP assignments, breaking cached WebSocket connections?",
+            "impact": "Active users lose connections mid-session. Real-time features stop working.",
+            "domains": ["Infrastructure"],
+            "title": "Tailscale Network Split-Brain During Reconnection"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if some containers run with different Node.js 22 experimental features enabled?",
+            "impact": "Inconsistent behavior across requests. Same input, different outputs.",
+            "domains": ["Deployment"],
+            "title": "Node.js 22+ Feature Flags Differ Across Container Versions"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 80,
+            "scenario": "What if host system user permissions change making mounted volumes unreadable to container processes?",
+            "impact": "Application starts successfully but fails when accessing files.",
+            "domains": ["Deployment"],
+            "title": "Docker Volume Mount Permissions Drift"
+          }
+        ],
+        "matched_domains": ["deployment", "infrastructure"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 2,
+          "high": 4,
+          "medium": 4,
+          "low": 0
+        }
+      },
+      "raw_response": "# Docker Infrastructure Risk Analysis\n\n## \ud83d\udd34 CRITICAL (95%)\n\n**Tailscale Funnel Bypasses Container Network Security**\n\n> What if Tailscale Funnel exposes internal container ports directly to the internet, bypassing Docker's network isolation?\n\n- **Impact:** Internal services (databases, admin panels) become publicly accessible without authentication. Complete security perimeter breach.\n- **Domain:** infrastructure"
+    },
+    {
+      "area": "Authentication & Security",
+      "context": "OAuth, API key management, webhook signatures, WebSocket auth, tool sandboxing across 12+ channels. Local-first data storage.",
+      "result": {
+        "scope": "Authentication, authorization, and security",
+        "risks": [
+          {
+            "severity": "CRITICAL",
+            "confidence": 90,
+            "scenario": "What if OAuth tokens granted for service A get reused for service B with broader permissions?",
+            "impact": "User inadvertently grants assistant access to delete files, send emails, or modify data across services they only intended read access for.",
+            "domains": ["Auth"],
+            "title": "OAuth Token Scope Creep Between Services"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 85,
+            "scenario": "What if user's device gets compromised but cached OAuth tokens/API keys remain valid across all 12+ channels?",
+            "impact": "Attacker gains persistent access to all connected services. Local-first architecture means credentials survive device wipes/reinstalls.",
+            "domains": ["Auth"],
+            "title": "Device Credential Persistence After Device Compromise"
+          },
+          {
+            "severity": "CRITICAL",
+            "confidence": 88,
+            "scenario": "What if webhook signature verification accepts multiple algorithms and attacker downgrades to weaker one?",
+            "impact": "Malicious webhooks inject fake data into assistant, triggering unauthorized tool executions.",
+            "domains": ["Security"],
+            "title": "Webhook Signature Bypass via Algorithm Confusion"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 85,
+            "scenario": "What if WebSocket reconnection happens before previous session cleanup, allowing two authenticated sessions for same user?",
+            "impact": "Tool executions and sensitive data responses get sent to wrong client session.",
+            "domains": ["Auth"],
+            "title": "WebSocket Authentication Race During Reconnection"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 90,
+            "scenario": "What if OpenAI/Anthropic API keys rotate but not all 12+ channels receive the update simultaneously?",
+            "impact": "Partial service degradation. Some channels work, others fail. Users retry causing cost spikes.",
+            "domains": ["Auth"],
+            "title": "API Key Rotation Without Service Coordination"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 82,
+            "scenario": "What if Tailscale network partitions and assistant authenticates against stale ACL?",
+            "impact": "Revoked user retains access to sensitive data/tools until network heals. Compliance violations.",
+            "domains": ["Auth"],
+            "title": "Tailscale Network Split-Brain Authentication"
+          },
+          {
+            "severity": "HIGH",
+            "confidence": 83,
+            "scenario": "What if sandboxed tool spawns another tool that inherits broader permissions than intended?",
+            "impact": "AI agent gains filesystem access, network access, or system privileges beyond sandbox.",
+            "domains": ["Security"],
+            "title": "Tool Sandbox Escape via Nested Execution"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 85,
+            "scenario": "What if session tokens generated for mobile app conflict with web client tokens due to insufficient entropy?",
+            "impact": "User gets logged out randomly on one device when using another.",
+            "domains": ["Auth"],
+            "title": "Session Token Collision Across Device Types"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 82,
+            "scenario": "What if OAuth state parameters aren't invalidated after use and attacker replays authorization flow?",
+            "impact": "Attacker could hijack OAuth callback and gain access to connected services.",
+            "domains": ["Auth"],
+            "title": "OAuth State Parameter Reuse Attack"
+          },
+          {
+            "severity": "MEDIUM",
+            "confidence": 88,
+            "scenario": "What if encryption keys for local data storage are derived from predictable device identifiers?",
+            "impact": "Offline key derivation attack exposes conversation history and API keys.",
+            "domains": ["Security"],
+            "title": "Local Data Encryption Key Derivation Weakness"
+          }
+        ],
+        "matched_domains": ["auth", "security", "deployment"],
+        "pattern_count": 107,
+        "depth": "deep",
+        "threshold": 70,
+        "summary": {
+          "total_risks": 10,
+          "critical": 3,
+          "high": 4,
+          "medium": 3,
+          "low": 0
+        }
+      },
+      "raw_response": "## Authentication, Authorization, and Security Risk Analysis\n\n### \ud83d\udd34 CRITICAL (90%)\n\n**OAuth Token Scope Creep Between Services**\n\n> What if OAuth tokens granted for service A get reused for service B with broader permissions?\n\n- **Impact:** User inadvertently grants assistant access to delete files, send emails, or modify data across services they only intended read access for.\n- **Domain:** auth"
+    }
+  ]
+}
