@@ -14,16 +14,14 @@ Feed it a feature spec, PR diff, or plain English — Gremlin critiques it for b
 ## Installation
 
 ```bash
-# Clone the repo
-git clone https://github.com/abhi10/gremlin.git
-cd gremlin
-
-# Install
-pip install -e .
+# Install from PyPI
+pip install gremlin-critic
 
 # Set your Anthropic API key
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+> **For development:** `git clone https://github.com/abhi10/gremlin.git && pip install -e ".[dev]"`
 
 ## Quick Start
 
@@ -104,6 +102,19 @@ See the [API documentation](#programmatic-api) below for detailed usage.
   Impact: Potential duplicate charges.
   Domain: payments, concurrency
 ```
+
+## Risk Dashboard
+
+Interactive visualization of Gremlin analysis results — live at **[abhi10.github.io/gremlin](https://abhi10.github.io/gremlin/)**
+
+[![Gremlin Risk Dashboard](https://img.shields.io/badge/Live%20Demo-Risk%20Dashboard-6366F1?style=flat-square)](https://abhi10.github.io/gremlin/)
+
+Features:
+- **Heatmap visualization** — severity distribution across feature areas (CRITICAL / HIGH / MEDIUM / LOW)
+- **Severity donut chart** — at-a-glance risk breakdown
+- **Domain bar chart** — risk count per domain (concurrency, auth, payments...)
+- **Interactive risk table** — sortable, filterable, expandable rows with full scenario + impact
+- **Multi-project** — includes scans of [celery](https://github.com/celery/celery), [pydantic](https://github.com/pydantic/pydantic), [openclaw](https://github.com/openclaw/openclaw)
 
 ## Commands
 
