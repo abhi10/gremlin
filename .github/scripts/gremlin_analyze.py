@@ -4,6 +4,7 @@
 import json
 import os
 import sys
+import time
 
 
 def main():
@@ -17,7 +18,6 @@ def main():
             context = f.read()
 
     try:
-        import time
         from gremlin import Gremlin
 
         g = Gremlin()
