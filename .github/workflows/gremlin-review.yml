@@ -25,26 +25,61 @@ jobs:
       - name: Get PR diff
         run: |
           git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr-diff.txt
-          echo "--- PR Diff preview (first 50 lines) ---"
-          head -50 /tmp/pr-diff.txt
+          echo "--- PR Diff preview (first 30 lines) ---"
+          head -30 /tmp/pr-diff.txt
 
       - name: Run Gremlin
+        id: gremlin
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           gremlin review "${{ github.event.pull_request.title }}" \
             --context @/tmp/pr-diff.txt \
-            --output md > /tmp/gremlin-report.md
-          echo "--- Gremlin Report ---"
-          cat /tmp/gremlin-report.md
+            --output json > /tmp/gremlin-report.json 2>/tmp/gremlin-error.txt
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+          echo "--- Gremlin Output ---"
+          cat /tmp/gremlin-report.json
+        continue-on-error: true
+
+      - name: Debug on failure
+        if: steps.gremlin.outcome == 'failure'
+        run: |
+          echo "--- Gremlin stderr ---"
+          cat /tmp/gremlin-error.txt || echo "(empty)"
+          echo "--- Gremlin stdout ---"
+          cat /tmp/gremlin-report.json || echo "(empty)"
 
       - name: Post PR Comment
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
-            const report = fs.readFileSync('/tmp/gremlin-report.md', 'utf8');
-            const body = `## Gremlin Risk Review\n\n${report}\n\n---\n*Powered by [gremlin-critic](https://github.com/abhi10/gremlin)*`;
+            let body;
+
+            try {
+              const raw = fs.readFileSync('/tmp/gremlin-report.json', 'utf8');
+              const data = JSON.parse(raw);
+              const risks = data.risks || [];
+
+              if (risks.length === 0) {
+                body = `## Gremlin Risk Review\n\nNo risks above threshold found.`;
+              } else {
+                const lines = risks.map(r =>
+                  `### ${r.severity?.toUpperCase() || 'RISK'}: ${r.title || r.scenario}\n` +
+                  `**Confidence:** ${r.confidence}%\n\n` +
+                  `${r.impact || r.description || ''}`
+                ).join('\n\n---\n\n');
+                body = `## Gremlin Risk Review\n\n**${risks.length} risk(s) found**\n\n${lines}`;
+              }
+            } catch (e) {
+              const errLog = fs.existsSync('/tmp/gremlin-error.txt')
+                ? fs.readFileSync('/tmp/gremlin-error.txt', 'utf8')
+                : 'No error log available';
+              body = `## Gremlin Risk Review\n\n⚠️ Analysis failed.\n\`\`\`\n${errLog}\n\`\`\``;
+            }
+
+            body += `\n\n---\n*Powered by [gremlin-critic](https://github.com/abhi10/gremlin)*`;
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
