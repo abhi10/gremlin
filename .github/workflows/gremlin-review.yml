@@ -25,7 +25,7 @@ jobs:
       - name: Get PR diff
         run: |
           git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr-diff.txt
-          echo "--- PR Diff preview (first 30 lines) ---"
+          echo "--- PR Diff (first 30 lines) ---"
           head -30 /tmp/pr-diff.txt
 
       - name: Run Gremlin
@@ -33,25 +33,12 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          python3 - <<'EOF'
-          import json, sys
-          try:
-              from gremlin import Gremlin
-              context = open('/tmp/pr-diff.txt').read()
-              g = Gremlin()
-              result = g.analyze(
-                  "${{ github.event.pull_request.title }}",
-                  context=context
-              )
-              with open('/tmp/gremlin-report.json', 'w') as f:
-                  f.write(result.to_json())
-              print(f"Done: {result.total_count} risks found")
-          except Exception as e:
-              print(f"ERROR: {e}", file=sys.stderr)
-              with open('/tmp/gremlin-report.json', 'w') as f:
-                  json.dump({"error": str(e), "risks": []}, f)
-              sys.exit(1)
-          EOF
+          python3 .github/scripts/gremlin_analyze.py \
+            "${{ github.event.pull_request.title }}" \
+            /tmp/pr-diff.txt \
+            /tmp/gremlin-report.json
+          echo "--- Gremlin JSON output ---"
+          cat /tmp/gremlin-report.json
         continue-on-error: true
 
       - name: Post PR Comment
@@ -63,24 +50,31 @@ jobs:
 
             try {
               const raw = fs.readFileSync('/tmp/gremlin-report.json', 'utf8');
+              console.log('Raw JSON:', raw.substring(0, 200));
               const data = JSON.parse(raw);
-              const risks = data.risks || [];
 
-              if (risks.length === 0) {
-                body = `## Gremlin Risk Review\n\nNo risks above threshold found.`;
+              if (data.error) {
+                body = `## Gremlin Risk Review\n\n⚠️ Analysis error:\n\`\`\`\n${data.error}\n\`\`\``;
               } else {
-                const lines = risks.map(r =>
-                  `### ${r.severity?.toUpperCase() || 'RISK'}: ${r.title || r.scenario}\n` +
-                  `**Confidence:** ${r.confidence}%\n\n` +
-                  `${r.impact || r.description || ''}`
-                ).join('\n\n---\n\n');
-                body = `## Gremlin Risk Review\n\n**${risks.length} risk(s) found**\n\n${lines}`;
+                const risks = data.risks || [];
+                if (risks.length === 0) {
+                  body = `## Gremlin Risk Review\n\nNo risks above threshold found.`;
+                } else {
+                  const lines = risks.map(r =>
+                    `### ${(r.severity || 'RISK').toUpperCase()}: ${r.title || r.scenario}\n` +
+                    `**Confidence:** ${r.confidence}%\n\n` +
+                    `${r.impact || ''}`
+                  ).join('\n\n---\n\n');
+                  const summary = data.summary || {};
+                  body = `## Gremlin Risk Review\n\n` +
+                    `**${risks.length} risk(s)** — ` +
+                    `🔴 ${summary.critical || 0} critical · ` +
+                    `🟠 ${summary.high || 0} high · ` +
+                    `🟡 ${summary.medium || 0} medium\n\n${lines}`;
+                }
               }
             } catch (e) {
-              const errLog = fs.existsSync('/tmp/gremlin-error.txt')
-                ? fs.readFileSync('/tmp/gremlin-error.txt', 'utf8')
-                : 'No error log available';
-              body = `## Gremlin Risk Review\n\n⚠️ Analysis failed.\n\`\`\`\n${errLog}\n\`\`\``;
+              body = `## Gremlin Risk Review\n\n⚠️ Could not read analysis output: ${e.message}`;
             }
 
             body += `\n\n---\n*Powered by [gremlin-critic](https://github.com/abhi10/gremlin)*`;
