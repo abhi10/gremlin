@@ -33,21 +33,26 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          gremlin review "${{ github.event.pull_request.title }}" \
-            --context @/tmp/pr-diff.txt \
-            --output json > /tmp/gremlin-report.json 2>/tmp/gremlin-error.txt
-          echo "exit_code=$?" >> $GITHUB_OUTPUT
-          echo "--- Gremlin Output ---"
-          cat /tmp/gremlin-report.json
+          python3 - <<'EOF'
+          import json, sys
+          try:
+              from gremlin import Gremlin
+              context = open('/tmp/pr-diff.txt').read()
+              g = Gremlin()
+              result = g.analyze(
+                  "${{ github.event.pull_request.title }}",
+                  context=context
+              )
+              with open('/tmp/gremlin-report.json', 'w') as f:
+                  f.write(result.to_json())
+              print(f"Done: {result.total_count} risks found")
+          except Exception as e:
+              print(f"ERROR: {e}", file=sys.stderr)
+              with open('/tmp/gremlin-report.json', 'w') as f:
+                  json.dump({"error": str(e), "risks": []}, f)
+              sys.exit(1)
+          EOF
         continue-on-error: true
-
-      - name: Debug on failure
-        if: steps.gremlin.outcome == 'failure'
-        run: |
-          echo "--- Gremlin stderr ---"
-          cat /tmp/gremlin-error.txt || echo "(empty)"
-          echo "--- Gremlin stdout ---"
-          cat /tmp/gremlin-report.json || echo "(empty)"
 
       - name: Post PR Comment
         uses: actions/github-script@v7
