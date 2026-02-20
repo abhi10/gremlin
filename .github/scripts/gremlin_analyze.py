@@ -17,17 +17,35 @@ def main():
             context = f.read()
 
     try:
+        import time
         from gremlin import Gremlin
 
         g = Gremlin()
-        result = g.analyze(scope, context=context if context else None)
+        last_error = None
 
-        with open(output_file, "w") as f:
-            f.write(result.to_json())
+        for attempt in range(3):
+            try:
+                if attempt > 0:
+                    wait = 15 * attempt
+                    print(f"Retry {attempt}/2 after {wait}s...")
+                    time.sleep(wait)
 
-        risk_count = len(result.risks)
-        print(f"Done: {risk_count} risk(s) found")
-        sys.exit(0)
+                result = g.analyze(scope, context=context if context else None)
+
+                with open(output_file, "w") as f:
+                    f.write(result.to_json())
+
+                print(f"Done: {len(result.risks)} risk(s) found")
+                sys.exit(0)
+
+            except Exception as e:
+                last_error = e
+                if "529" in str(e) or "overloaded" in str(e).lower():
+                    print(f"API overloaded (attempt {attempt + 1}/3), retrying...", file=sys.stderr)
+                    continue
+                raise
+
+        raise last_error
 
     except Exception as e:
         print(f"ERROR: {e}", file=sys.stderr)
