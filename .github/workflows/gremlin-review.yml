@@ -1,0 +1,53 @@
+name: Gremlin Risk Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Gremlin
+        run: pip install gremlin-critic
+
+      - name: Get PR diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr-diff.txt
+          echo "--- PR Diff preview (first 50 lines) ---"
+          head -50 /tmp/pr-diff.txt
+
+      - name: Run Gremlin
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          gremlin review "${{ github.event.pull_request.title }}" \
+            --context @/tmp/pr-diff.txt \
+            --output md > /tmp/gremlin-report.md
+          echo "--- Gremlin Report ---"
+          cat /tmp/gremlin-report.md
+
+      - name: Post PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('/tmp/gremlin-report.md', 'utf8');
+            const body = `## Gremlin Risk Review\n\n${report}\n\n---\n*Powered by [gremlin-critic](https://github.com/abhi10/gremlin)*`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
