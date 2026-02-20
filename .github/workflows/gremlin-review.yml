@@ -1,0 +1,87 @@
+name: Gremlin Risk Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Gremlin
+        run: pip install gremlin-critic
+
+      - name: Get PR diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > /tmp/pr-diff.txt
+          echo "--- PR Diff (first 30 lines) ---"
+          head -30 /tmp/pr-diff.txt
+
+      - name: Run Gremlin
+        id: gremlin
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python3 .github/scripts/gremlin_analyze.py \
+            "${{ github.event.pull_request.title }}" \
+            /tmp/pr-diff.txt \
+            /tmp/gremlin-report.json
+          echo "--- Gremlin JSON output ---"
+          cat /tmp/gremlin-report.json
+        continue-on-error: true
+
+      - name: Post PR Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let body;
+
+            try {
+              const raw = fs.readFileSync('/tmp/gremlin-report.json', 'utf8');
+              console.log('Raw JSON:', raw.substring(0, 200));
+              const data = JSON.parse(raw);
+
+              if (data.error) {
+                body = `## Gremlin Risk Review\n\n⚠️ Analysis error:\n\`\`\`\n${data.error}\n\`\`\``;
+              } else {
+                const risks = data.risks || [];
+                if (risks.length === 0) {
+                  body = `## Gremlin Risk Review\n\nNo risks above threshold found.`;
+                } else {
+                  const lines = risks.map(r =>
+                    `### ${(r.severity || 'RISK').toUpperCase()}: ${r.title || r.scenario}\n` +
+                    `**Confidence:** ${r.confidence}%\n\n` +
+                    `${r.impact || ''}`
+                  ).join('\n\n---\n\n');
+                  const summary = data.summary || {};
+                  body = `## Gremlin Risk Review\n\n` +
+                    `**${risks.length} risk(s)** — ` +
+                    `🔴 ${summary.critical || 0} critical · ` +
+                    `🟠 ${summary.high || 0} high · ` +
+                    `🟡 ${summary.medium || 0} medium\n\n${lines}`;
+                }
+              }
+            } catch (e) {
+              body = `## Gremlin Risk Review\n\n⚠️ Could not read analysis output: ${e.message}`;
+            }
+
+            body += `\n\n---\n*Powered by [gremlin-critic](https://github.com/abhi10/gremlin)*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
