@@ -5,6 +5,37 @@ All notable changes to Gremlin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-21
+
+### Added
+
+**Decoupled Pipeline Stage Commands (v0.3):**
+- `gremlin understand "scope"` — Stage 1: infer domains and write `understanding.json` (no LLM call)
+- `gremlin ideate` — Stage 2: select patterns and write `scenarios.json` (no LLM call)
+- `gremlin rollout` — Stage 3: call LLM and write `results.json`
+- `gremlin judge` — Stage 4: parse and score risks, write `scores.json`; `--validate` flag for a second LLM validation pass
+- Stage artifacts are JSON-serializable and interoperable with the `Gremlin` Python API
+- Each stage reads/writes to a configurable `--run-dir` (default: `.gremlin/run/`)
+
+**Pipeline Stage Data Classes (`gremlin.core.stages`):**
+- `UnderstandingResult`, `IdeationResult`, `RolloutResult`, `JudgmentResult` — frozen dataclasses with `to_dict` / `from_dict` and schema versioning
+- Immutable (`frozen=True`) to prevent silent inter-stage data corruption
+
+**Golden Set Recall Evaluation:**
+- `evals/golden/httpx-golden.json` — 12 verified ground-truth risk fixtures from real encode/httpx issues
+- `evals/golden_eval.py` — recall measurement script (`--fast`, `--dry-run`, `--threshold` flags)
+- CI job `golden-recall` runs on every PR (single fixture, `continue-on-error`)
+
+**Robustness:**
+- Stage methods (`_run_understanding`, `_run_ideation`, `_run_rollout`, `_run_judgment`) tag exceptions with their stage name for faster debugging
+- `_write_run_artifact` uses atomic rename — no partially-written artifacts visible to downstream stages
+
+### Changed
+- `Gremlin.analyze()` refactored into five private stage methods; public API unchanged
+- `Gremlin.analyze()` now accepts `validate: bool = False` to trigger a second LLM validation pass
+
+---
+
 ## [0.1.0] - 2026-01-11
 
 ### Added
