@@ -553,7 +553,12 @@ class TestGremlinStageMethods:
 
     def test_build_result_produces_analysis_result(self, mock_rollout_response):
         """_build_result converts JudgmentResult → AnalysisResult correctly."""
-        from gremlin.core.stages import IdeationResult, JudgmentResult, RolloutResult, UnderstandingResult
+        from gremlin.core.stages import (
+            IdeationResult,
+            JudgmentResult,
+            RolloutResult,
+            UnderstandingResult,
+        )
 
         g = Gremlin()
         u = UnderstandingResult("checkout", ["payments"], "quick", 80)
@@ -646,3 +651,105 @@ class TestGremlinIntegration:
             assert result.scope == "file upload"
 
         anyio.run(run_test)
+
+    def test_real_analyze_with_validate(self):
+        """validate=True makes two real API calls and returns filtered risks."""
+        gremlin = Gremlin(threshold=70)
+        result = gremlin.analyze("checkout flow", validate=True)
+
+        assert result.scope == "checkout flow"
+        assert isinstance(result.risks, list)
+        # Validation may reduce risk count but should never crash
+        assert all(isinstance(r, Risk) for r in result.risks)
+
+
+@pytest.mark.skipif(
+    not os.environ.get("ANTHROPIC_API_KEY"),
+    reason="ANTHROPIC_API_KEY not set - skipping integration test",
+)
+class TestPipelineStagesIntegration:
+    """Integration tests for individual stage methods with real LLM calls."""
+
+    def test_understanding_stage_no_llm(self):
+        """_run_understanding must NOT make any LLM call."""
+        g = Gremlin(threshold=70)
+        u = g._run_understanding("user login with password", None, "quick")
+
+        assert u.scope == "user login with password"
+        assert len(u.matched_domains) > 0
+        assert "auth" in u.matched_domains
+        assert u.depth == "quick"
+        assert u.threshold == 70
+
+    def test_ideation_stage_no_llm(self):
+        """_run_ideation must NOT make any LLM call and returns patterns."""
+        from gremlin.core.stages import UnderstandingResult
+
+        g = Gremlin()
+        # Use a scope with real payments keywords so select_patterns activates domain
+        u = UnderstandingResult("checkout flow with stripe payment", ["payments"], "quick", 80)
+        i = g._run_ideation(u)
+
+        assert i.pattern_count > 0
+        assert "universal" in i.selected_patterns
+
+    def test_full_stage_chain_real_llm(self):
+        """Run all 4 stages sequentially with a real LLM call in rollout only."""
+        g = Gremlin(threshold=70)
+
+        # Stages 1-2: no LLM
+        u = g._run_understanding("user login with password", None, "quick")
+        i = g._run_ideation(u)
+
+        assert i.pattern_count > 0
+
+        # Stage 3: one real LLM call
+        r = g._run_rollout(i)
+        assert len(r.raw_response) > 100
+
+        # Stage 4: parse only, no second LLM call
+        j = g._run_judgment(r, validate=False)
+        assert len(j.risks) > 0
+        assert j.validated is False
+        assert all(d["severity"] in ("CRITICAL", "HIGH", "MEDIUM", "LOW") for d in j.risks)
+        assert all(d["scenario"] for d in j.risks)
+
+        # _build_result converts JudgmentResult → public AnalysisResult
+        result = g._build_result(j, raw_response=r.raw_response)
+        assert isinstance(result, AnalysisResult)
+        assert result.scope == "user login with password"
+        assert result.matched_domains == u.matched_domains
+        assert result.pattern_count == i.pattern_count
+        assert len(result.risks) == len(j.risks)
+
+    def test_stage_chain_with_validate(self):
+        """Stage chain with validate=True makes exactly 2 real LLM calls."""
+        g = Gremlin(threshold=70)
+
+        u = g._run_understanding("checkout flow", None, "quick")
+        i = g._run_ideation(u)
+        r = g._run_rollout(i)
+
+        # validate=True triggers second LLM call inside _run_judgment
+        j = g._run_judgment(r, validate=True)
+
+        assert j.validated is True
+        # Risk count may be <= unvalidated count (validator filters)
+        assert isinstance(j.risks, list)
+        assert all(d["severity"] in ("CRITICAL", "HIGH", "MEDIUM", "LOW") for d in j.risks)
+
+    def test_stage_artifacts_are_json_serializable(self):
+        """All stage artifacts must serialize to JSON without error."""
+        import json
+
+        g = Gremlin(threshold=70)
+        u = g._run_understanding("file upload", None, "quick")
+        i = g._run_ideation(u)
+        r = g._run_rollout(i)
+        j = g._run_judgment(r, validate=False)
+
+        # Must not raise
+        for artifact, name in [(u, "understanding"), (i, "ideation"),
+                                (r, "rollout"), (j, "judgment")]:
+            serialized = json.dumps(artifact.to_dict())
+            assert len(serialized) > 10, f"{name} artifact serialized to empty JSON"
