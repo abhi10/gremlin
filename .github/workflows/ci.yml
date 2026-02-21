@@ -40,3 +40,24 @@ jobs:
         with:
           files: ./coverage.xml
         if: matrix.python-version == '3.11'
+
+  golden-recall:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Golden set recall (fast — 1 fixture)
+        run: python evals/golden_eval.py --fast --threshold 0.4
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        continue-on-error: true

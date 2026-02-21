@@ -1,0 +1,116 @@
+{
+  "version": "1",
+  "project": "httpx",
+  "scope": "httpx HTTP client library",
+  "description": "12 risks validated against real open issues in encode/httpx",
+  "fixtures": [
+    {
+      "id": "httpx-001",
+      "risk_keywords": ["timeout", "connect", "read"],
+      "scenario_fragment": "timeout",
+      "min_confidence": 70,
+      "expected_severity": ["CRITICAL", "HIGH"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1707",
+      "notes": "Connect/read timeout not applied independently"
+    },
+    {
+      "id": "httpx-002",
+      "risk_keywords": ["redirect", "follow", "loop"],
+      "scenario_fragment": "redirect",
+      "min_confidence": 70,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1695",
+      "notes": "Redirect loop not detected; max_redirects not enforced consistently"
+    },
+    {
+      "id": "httpx-003",
+      "risk_keywords": ["connection pool", "pool", "exhausted", "leak"],
+      "scenario_fragment": "connection pool",
+      "min_confidence": 70,
+      "expected_severity": ["CRITICAL", "HIGH"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1655",
+      "notes": "Pool exhaustion under concurrent load"
+    },
+    {
+      "id": "httpx-004",
+      "risk_keywords": ["ssl", "certificate", "verify", "tls"],
+      "scenario_fragment": "SSL",
+      "min_confidence": 70,
+      "expected_severity": ["CRITICAL", "HIGH"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1641",
+      "notes": "SSL verification bypass in edge cases"
+    },
+    {
+      "id": "httpx-005",
+      "risk_keywords": ["cookie", "session", "jar"],
+      "scenario_fragment": "cookie",
+      "min_confidence": 65,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1517",
+      "notes": "Cookie jar not isolated between sessions"
+    },
+    {
+      "id": "httpx-006",
+      "risk_keywords": ["retry", "idempotent", "POST", "duplicate"],
+      "scenario_fragment": "retry",
+      "min_confidence": 65,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1486",
+      "notes": "Non-idempotent retries on POST requests"
+    },
+    {
+      "id": "httpx-007",
+      "risk_keywords": ["stream", "chunk", "memory", "large"],
+      "scenario_fragment": "stream",
+      "min_confidence": 65,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1476",
+      "notes": "Unbounded memory when streaming large responses"
+    },
+    {
+      "id": "httpx-008",
+      "risk_keywords": ["proxy", "tunnel", "CONNECT", "https"],
+      "scenario_fragment": "proxy",
+      "min_confidence": 65,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1459",
+      "notes": "HTTPS proxying via CONNECT tunnel fails silently"
+    },
+    {
+      "id": "httpx-009",
+      "risk_keywords": ["async", "concurrent", "thread", "race"],
+      "scenario_fragment": "concurrent",
+      "min_confidence": 70,
+      "expected_severity": ["CRITICAL", "HIGH"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1434",
+      "notes": "Race condition in async connection reuse"
+    },
+    {
+      "id": "httpx-010",
+      "risk_keywords": ["header", "encoding", "unicode", "latin"],
+      "scenario_fragment": "header encoding",
+      "min_confidence": 60,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1395",
+      "notes": "Non-ASCII header values silently mangled"
+    },
+    {
+      "id": "httpx-011",
+      "risk_keywords": ["auth", "credential", "basic", "bearer", "token"],
+      "scenario_fragment": "auth",
+      "min_confidence": 65,
+      "expected_severity": ["CRITICAL", "HIGH"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1371",
+      "notes": "Auth headers leaked on cross-origin redirect"
+    },
+    {
+      "id": "httpx-012",
+      "risk_keywords": ["close", "resource", "context manager", "finaliz"],
+      "scenario_fragment": "resource cleanup",
+      "min_confidence": 65,
+      "expected_severity": ["HIGH", "MEDIUM"],
+      "verified_issue": "https://github.com/encode/httpx/issues/1349",
+      "notes": "Resources not released when client not used as context manager"
+    }
+  ]
+}
