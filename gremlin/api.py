@@ -363,45 +363,56 @@ class Gremlin:
         self, scope: str, context: str | None, depth: str
     ) -> UnderstandingResult:
         """Stage 1 — Understanding: infer domains from scope keywords."""
-        matched_domains = infer_domains(scope, self._domain_keywords)
-        return UnderstandingResult(
-            scope=scope,
-            matched_domains=matched_domains,
-            depth=depth,
-            threshold=self.threshold,
-            context=context,
-        )
+        try:
+            matched_domains = infer_domains(scope, self._domain_keywords)
+            return UnderstandingResult(
+                scope=scope,
+                matched_domains=matched_domains,
+                depth=depth,
+                threshold=self.threshold,
+                context=context,
+            )
+        except Exception as e:
+            raise RuntimeError(f"[understanding stage] {e}") from e
 
     def _run_ideation(self, u: UnderstandingResult) -> IdeationResult:
         """Stage 2 — Ideation: select patterns for the matched domains."""
-        selected = select_patterns(u.scope, self._patterns, u.matched_domains)
-        pattern_count = len(selected.get("universal", [])) + sum(
-            len(p) for p in selected.get("domain_specific", {}).values()
-        )
-        return IdeationResult(
-            understanding=u,
-            selected_patterns=selected,
-            pattern_count=pattern_count,
-        )
+        try:
+            selected = select_patterns(u.scope, self._patterns, u.matched_domains)
+            pattern_count = len(selected.get("universal", [])) + sum(
+                len(p) for p in selected.get("domain_specific", {}).values()
+            )
+            return IdeationResult(
+                understanding=u,
+                selected_patterns=selected,
+                pattern_count=pattern_count,
+            )
+        except Exception as e:
+            raise RuntimeError(f"[ideation stage] {e}") from e
 
     def _run_rollout(self, i: IdeationResult) -> RolloutResult:
         """Stage 3 — Rollout: call the LLM with the constructed prompt."""
-        u = i.understanding
-        full_system, user_message = build_prompt(
-            self._system_prompt,
-            i.selected_patterns,
-            u.scope,
-            u.depth,
-            u.threshold,
-            u.context,
-        )
-        if self._provider is None:
-            self._provider = get_provider(
-                provider=self.provider_name,
-                model=self.model_name,
+        try:
+            u = i.understanding
+            full_system, user_message = build_prompt(
+                self._system_prompt,
+                i.selected_patterns,
+                u.scope,
+                u.depth,
+                u.threshold,
+                u.context,
             )
-        response = self._provider.complete(full_system, user_message)
-        return RolloutResult(ideation=i, raw_response=response.text)
+            if self._provider is None:
+                self._provider = get_provider(
+                    provider=self.provider_name,
+                    model=self.model_name,
+                )
+            response = self._provider.complete(full_system, user_message)
+            return RolloutResult(ideation=i, raw_response=response.text)
+        except RuntimeError:
+            raise  # Already tagged by a nested stage call
+        except Exception as e:
+            raise RuntimeError(f"[rollout stage] {e}") from e
 
     def _run_judgment(self, r: RolloutResult, validate: bool = False) -> JudgmentResult:
         """Stage 4 — Judgment: parse risks and optionally validate them.
@@ -409,33 +420,38 @@ class Gremlin:
         When validate=True, a second LLM call filters hallucinations and
         duplicates. On any validation error, falls back to unvalidated risks.
         """
-        response_text = r.raw_response
-        validation_summary: str | None = None
-        validated = False
+        try:
+            response_text = r.raw_response
+            validation_summary: str | None = None
+            validated = False
 
-        if validate:
-            try:
-                validation_prompt = build_validation_prompt(
-                    r.ideation.understanding.scope, response_text
-                )
-                validated_response = self._provider.complete(
-                    VALIDATION_SYSTEM_PROMPT, validation_prompt
-                )
-                response_text = validated_response.text
-                validated = True
-                # Extract summary block appended by the validator
-                if "---" in response_text:
-                    validation_summary = response_text.split("---")[-1].strip()
-            except Exception:
-                pass  # Graceful fallback to unvalidated
+            if validate:
+                try:
+                    validation_prompt = build_validation_prompt(
+                        r.ideation.understanding.scope, response_text
+                    )
+                    validated_response = self._provider.complete(
+                        VALIDATION_SYSTEM_PROMPT, validation_prompt
+                    )
+                    response_text = validated_response.text
+                    validated = True
+                    # Extract summary block appended by the validator
+                    if "---" in response_text:
+                        validation_summary = response_text.split("---")[-1].strip()
+                except Exception:
+                    pass  # Graceful fallback to unvalidated
 
-        risks = self._parse_risks(response_text, r.ideation.understanding.matched_domains)
-        return JudgmentResult(
-            rollout=r,
-            risks=[risk.to_dict() for risk in risks],
-            validation_summary=validation_summary,
-            validated=validated,
-        )
+            risks = self._parse_risks(response_text, r.ideation.understanding.matched_domains)
+            return JudgmentResult(
+                rollout=r,
+                risks=[risk.to_dict() for risk in risks],
+                validation_summary=validation_summary,
+                validated=validated,
+            )
+        except RuntimeError:
+            raise  # Already tagged
+        except Exception as e:
+            raise RuntimeError(f"[judgment stage] {e}") from e
 
     def _build_result(self, j: JudgmentResult, raw_response: str) -> AnalysisResult:
         """Construct the public AnalysisResult from a completed JudgmentResult."""

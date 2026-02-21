@@ -478,11 +478,19 @@ def _load_run_artifact(run_dir: Path, filename: str) -> dict:
 
 
 def _write_run_artifact(run_dir: Path, filename: str, data: dict) -> None:
-    """Write a JSON artifact to the run directory."""
+    """Write a JSON artifact to the run directory atomically.
+
+    Writes to a .tmp file first, then renames to the target path.
+    On POSIX systems rename() is atomic, so a partially-written artifact
+    is never visible to downstream stage commands.
+    """
     import json
 
     run_dir.mkdir(parents=True, exist_ok=True)
-    (run_dir / filename).write_text(json.dumps(data, indent=2))
+    target = run_dir / filename
+    tmp = target.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2))
+    tmp.rename(target)
 
 
 @app.command()

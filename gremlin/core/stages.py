@@ -22,7 +22,7 @@ from typing import Any
 _SCHEMA_VERSION = "1"
 
 
-@dataclass
+@dataclass(frozen=True)
 class UnderstandingResult:
     """Output of the Understanding stage.
 
@@ -59,7 +59,7 @@ class UnderstandingResult:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class IdeationResult:
     """Output of the Ideation stage.
 
@@ -90,7 +90,7 @@ class IdeationResult:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class RolloutResult:
     """Output of the Rollout stage.
 
@@ -118,7 +118,7 @@ class RolloutResult:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class JudgmentResult:
     """Output of the Judgment stage.
 
