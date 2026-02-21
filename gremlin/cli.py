@@ -445,5 +445,207 @@ def learn(
         console.print(f"  [dim]Domain: {domain}[/dim]")
 
 
+# ---------------------------------------------------------------------------
+# Pipeline stage commands (v0.3)
+# ---------------------------------------------------------------------------
+# Each command reads a prerequisite artifact from --run-dir, executes one
+# stage via the Gremlin API stage methods, and writes its output artifact.
+# Artifacts are stored as JSON in .gremlin/run/ by default.
+#
+# Usage:
+#   gremlin understand "checkout flow"   → .gremlin/run/understanding.json
+#   gremlin ideate                        → .gremlin/run/scenarios.json
+#   gremlin rollout                       → .gremlin/run/results.json
+#   gremlin judge                         → .gremlin/run/scores.json
+#   gremlin review "checkout flow"        # full pipeline unchanged
+# ---------------------------------------------------------------------------
+
+_DEFAULT_RUN_DIR = Path(".gremlin/run")
+
+
+def _load_run_artifact(run_dir: Path, filename: str) -> dict:
+    """Load a JSON artifact from the run directory, with a clear error."""
+    path = run_dir / filename
+    if not path.exists():
+        console.print(f"[red]Error: {path} not found.[/red]")
+        console.print(
+            "[dim]Run the preceding stage first, or use a different --run-dir.[/dim]"
+        )
+        raise typer.Exit(1)
+    import json
+
+    return json.loads(path.read_text())
+
+
+def _write_run_artifact(run_dir: Path, filename: str, data: dict) -> None:
+    """Write a JSON artifact to the run directory."""
+    import json
+
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / filename).write_text(json.dumps(data, indent=2))
+
+
+@app.command()
+def understand(
+    scope: str = typer.Argument(..., help="Feature or area to analyze"),
+    context: str = typer.Option(
+        None, "--context", "-c",
+        help="Additional context: string, @filepath, or - for stdin",
+    ),
+    depth: str = typer.Option("quick", "--depth", "-d", help="Analysis depth: quick or deep"),
+    threshold: int = typer.Option(80, "--threshold", "-t", help="Confidence threshold (0-100)"),
+    run_dir: Path = typer.Option(
+        _DEFAULT_RUN_DIR, "--run-dir", help="Directory for run artifacts"
+    ),
+) -> None:
+    """Stage 1 — Understand: infer domains from scope (no LLM call).
+
+    Writes: <run-dir>/understanding.json
+
+    Examples:
+        gremlin understand "checkout flow"
+        gremlin understand "auth system" --depth deep --run-dir /tmp/gremlin
+    """
+    from gremlin.api import Gremlin
+
+    try:
+        resolved_context = resolve_context(context)
+    except FileNotFoundError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    g = Gremlin(threshold=threshold)
+    result = g._run_understanding(scope, resolved_context, depth)
+    _write_run_artifact(run_dir, "understanding.json", result.to_dict())
+
+    console.print("[green]✓[/green] Understanding complete")
+    console.print(f"  Scope:   {result.scope}")
+    if result.matched_domains:
+        console.print(f"  Domains: {', '.join(result.matched_domains)}")
+    console.print(f"  [dim]→ {run_dir}/understanding.json[/dim]")
+
+
+@app.command()
+def ideate(
+    run_dir: Path = typer.Option(
+        _DEFAULT_RUN_DIR, "--run-dir", help="Directory for run artifacts"
+    ),
+) -> None:
+    """Stage 2 — Ideate: select patterns for the matched domains (no LLM call).
+
+    Reads:  <run-dir>/understanding.json
+    Writes: <run-dir>/scenarios.json
+
+    Examples:
+        gremlin ideate
+        gremlin ideate --run-dir /tmp/gremlin
+    """
+    from gremlin.api import Gremlin
+    from gremlin.core.stages import UnderstandingResult
+
+    d = _load_run_artifact(run_dir, "understanding.json")
+    u = UnderstandingResult.from_dict(d)
+
+    g = Gremlin(threshold=u.threshold)
+    result = g._run_ideation(u)
+    _write_run_artifact(run_dir, "scenarios.json", result.to_dict())
+
+    console.print("[green]✓[/green] Ideation complete")
+    console.print(f"  Patterns selected: {result.pattern_count}")
+    console.print(f"  [dim]→ {run_dir}/scenarios.json[/dim]")
+
+
+@app.command()
+def rollout(
+    run_dir: Path = typer.Option(
+        _DEFAULT_RUN_DIR, "--run-dir", help="Directory for run artifacts"
+    ),
+) -> None:
+    """Stage 3 — Rollout: call the LLM with the selected patterns.
+
+    Reads:  <run-dir>/scenarios.json
+    Writes: <run-dir>/results.json
+
+    Examples:
+        gremlin rollout
+        gremlin rollout --run-dir /tmp/gremlin
+    """
+    from gremlin.api import Gremlin
+    from gremlin.core.stages import IdeationResult
+
+    d = _load_run_artifact(run_dir, "scenarios.json")
+    i = IdeationResult.from_dict(d)
+
+    try:
+        g = Gremlin(threshold=i.understanding.threshold)
+        with console.status("[bold green]Thinking...[/bold green]", spinner="dots"):
+            result = g._run_rollout(i)
+    except Exception as e:
+        console.print(f"[red]Error calling LLM API: {e}[/red]")
+        raise typer.Exit(1)
+
+    _write_run_artifact(run_dir, "results.json", result.to_dict())
+    console.print("[green]✓[/green] Rollout complete")
+    console.print(f"  [dim]→ {run_dir}/results.json[/dim]")
+
+
+@app.command()
+def judge(
+    run_dir: Path = typer.Option(
+        _DEFAULT_RUN_DIR, "--run-dir", help="Directory for run artifacts"
+    ),
+    validate: bool = typer.Option(
+        False, "--validate", "-V",
+        help="Run second LLM pass to filter hallucinations and duplicates",
+    ),
+    output: str = typer.Option(
+        "rich", "--output", "-o", help="Output format: rich, md, json"
+    ),
+) -> None:
+    """Stage 4 — Judge: parse risks and optionally validate them.
+
+    Reads:  <run-dir>/results.json
+    Writes: <run-dir>/scores.json
+
+    Examples:
+        gremlin judge
+        gremlin judge --validate
+        gremlin judge --output json
+    """
+    from gremlin.api import Gremlin
+    from gremlin.core.stages import RolloutResult
+
+    d = _load_run_artifact(run_dir, "results.json")
+    r = RolloutResult.from_dict(d)
+
+    g = Gremlin(threshold=r.ideation.understanding.threshold)
+    if validate:
+        try:
+            g._provider = get_provider()
+        except ValueError as e:
+            console.print(f"[red]Error: {e}[/red]")
+            raise typer.Exit(1)
+        with console.status("[bold yellow]Validating...[/bold yellow]", spinner="dots"):
+            result = g._run_judgment(r, validate=True)
+    else:
+        result = g._run_judgment(r, validate=False)
+
+    _write_run_artifact(run_dir, "scores.json", result.to_dict())
+
+    risk_count = len(result.risks)
+    console.print(f"[green]✓[/green] Judgment complete — {risk_count} risk(s)")
+    if result.validated:
+        console.print("  [dim]Validation pass applied[/dim]")
+    console.print(f"  [dim]→ {run_dir}/scores.json[/dim]")
+
+    if risk_count and output in ("rich", "md"):
+        console.print()
+        for r_dict in result.risks:
+            sev = r_dict.get("severity", "RISK")
+            conf = r_dict.get("confidence", 0)
+            title = r_dict.get("title") or r_dict.get("scenario", "")[:60]
+            console.print(f"  [{sev}] ({conf}%) {title}")
+
+
 if __name__ == "__main__":
     app()
