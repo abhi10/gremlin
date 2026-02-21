@@ -18,6 +18,7 @@ from gremlin.core.patterns import (
     select_patterns,
 )
 from gremlin.core.prompts import build_prompt, load_system_prompt
+from gremlin.core.validator import VALIDATION_SYSTEM_PROMPT, build_validation_prompt
 from gremlin.llm.factory import get_provider
 
 # Pre-compiled regex patterns for response parsing (avoid recompiling per call)
@@ -281,6 +282,7 @@ class Gremlin:
         scope: str,
         context: str | None = None,
         depth: str = "quick",
+        validate: bool = False,
     ) -> AnalysisResult:
         """Analyze a scope for QA risks (synchronous).
 
@@ -288,6 +290,9 @@ class Gremlin:
             scope: Feature or area to analyze (e.g., "checkout flow")
             context: Optional additional context (code, requirements, etc.)
             depth: Analysis depth - "quick" or "deep"
+            validate: Run a second LLM pass to filter hallucinations and
+                duplicates. Increases quality at the cost of one extra API call.
+                On validation failure, falls back to unvalidated results.
 
         Returns:
             AnalysisResult with identified risks and metadata
@@ -300,6 +305,9 @@ class Gremlin:
             >>> gremlin = Gremlin()
             >>> result = gremlin.analyze("user registration")
             >>> print(f"Found {len(result.risks)} risks")
+            >>>
+            >>> # With validation pass
+            >>> result = gremlin.analyze("checkout", validate=True)
             >>>
             >>> # With code context
             >>> code = open("checkout.py").read()
@@ -329,9 +337,22 @@ class Gremlin:
             )
 
         response = self._provider.complete(full_system, user_message)
+        response_text = response.text
+
+        # Optional second pass: LLM-as-judge filters hallucinations and duplicates
+        if validate:
+            try:
+                validation_prompt = build_validation_prompt(scope, response_text)
+                validated_response = self._provider.complete(
+                    VALIDATION_SYSTEM_PROMPT, validation_prompt
+                )
+                response_text = validated_response.text
+            except Exception:
+                # Gracefully fall back to unvalidated results on any error
+                pass
 
         # Parse response into structured risks
-        risks = self._parse_risks(response.text, matched_domains)
+        risks = self._parse_risks(response_text, matched_domains)
 
         return AnalysisResult(
             scope=scope,
@@ -352,6 +373,7 @@ class Gremlin:
         scope: str,
         context: str | None = None,
         depth: str = "quick",
+        validate: bool = False,
     ) -> AnalysisResult:
         """Analyze a scope for QA risks (asynchronous).
 
@@ -362,6 +384,7 @@ class Gremlin:
             scope: Feature or area to analyze
             context: Optional additional context
             depth: Analysis depth - "quick" or "deep"
+            validate: Run a second LLM pass to filter hallucinations and duplicates
 
         Returns:
             AnalysisResult with identified risks and metadata
@@ -375,7 +398,7 @@ class Gremlin:
         # Run synchronous analyze() in thread pool
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            None, lambda: self.analyze(scope, context, depth)
+            None, lambda: self.analyze(scope, context, depth, validate)
         )
 
     def _parse_risks(self, response_text: str, domains: list[str]) -> list[Risk]:

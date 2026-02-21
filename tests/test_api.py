@@ -363,6 +363,98 @@ class TestGremlin:
         risks = gremlin._parse_risks(response, [])
         assert len(risks) == 0
 
+    def test_analyze_validate_false_makes_one_call(self, mock_llm_response):
+        """Default validate=False makes exactly one LLM call."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.return_value = mock_llm_response
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            result = gremlin.analyze("checkout flow")
+
+            assert mock_provider.complete.call_count == 1
+            assert len(result.risks) == 2
+
+    def test_analyze_validate_true_makes_two_calls(self, mock_llm_response):
+        """validate=True makes two LLM calls: rollout + judgment."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            # First call: rollout. Second call: validation judgment.
+            mock_provider.complete.side_effect = [
+                mock_llm_response,
+                LLMResponse(
+                    text="""### 🔴 CRITICAL (95%)
+
+**Payment Race Condition**
+
+> What if payment succeeds but order creation fails?
+
+- **Impact:** Customer charged but receives no order confirmation
+- **Domain:** payments
+""",
+                    model="test-model",
+                    provider="test",
+                ),
+            ]
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            result = gremlin.analyze("checkout flow", validate=True)
+
+            assert mock_provider.complete.call_count == 2
+            # Judgment filtered 2 risks down to 1
+            assert len(result.risks) == 1
+            assert result.risks[0].severity == "CRITICAL"
+
+    def test_analyze_validate_passes_scope_to_judgment(self, mock_llm_response):
+        """Validation prompt includes the original scope."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.return_value = mock_llm_response
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            gremlin.analyze("auth system", validate=True)
+
+            second_call_args = mock_provider.complete.call_args_list[1]
+            user_message = second_call_args[0][1]
+            assert "auth system" in user_message
+
+    def test_analyze_validate_graceful_fallback(self, mock_llm_response):
+        """When validation LLM call fails, falls back to unvalidated results."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.side_effect = [
+                mock_llm_response,
+                Exception("API rate limit"),
+            ]
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            result = gremlin.analyze("checkout", validate=True)
+
+            # Should not raise; returns unvalidated risks
+            assert len(result.risks) == 2
+
+    def test_analyze_async_validate_param_forwarded(self, mock_llm_response):
+        """analyze_async forwards validate param to analyze()."""
+        import anyio
+
+        async def run_test():
+            with patch("gremlin.api.get_provider") as mock_get_provider:
+                mock_provider = Mock()
+                mock_provider.complete.return_value = mock_llm_response
+                mock_get_provider.return_value = mock_provider
+
+                gremlin = Gremlin()
+                result = await gremlin.analyze_async("checkout", validate=False)
+
+                assert mock_provider.complete.call_count == 1
+                assert isinstance(result, AnalysisResult)
+
+        anyio.run(run_test)
+
 
 class TestImportAPI:
     """Test that API can be imported as specified in Phase 1."""
