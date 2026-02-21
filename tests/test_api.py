@@ -456,6 +456,128 @@ class TestGremlin:
         anyio.run(run_test)
 
 
+class TestGremlinStageMethods:
+    """Test the internal _run_* stage methods introduced in Step 3."""
+
+    @pytest.fixture
+    def mock_rollout_response(self):
+        return LLMResponse(
+            text="""### 🔴 CRITICAL (95%)
+
+**Payment Race Condition**
+
+> What if payment succeeds but order creation fails?
+
+- **Impact:** Customer charged but receives no order confirmation
+- **Domain:** payments
+""",
+            model="test-model",
+            provider="test",
+        )
+
+    def test_stage_methods_exist(self):
+        g = Gremlin()
+        assert callable(g._run_understanding)
+        assert callable(g._run_ideation)
+        assert callable(g._run_rollout)
+        assert callable(g._run_judgment)
+        assert callable(g._build_result)
+
+    def test_run_understanding_returns_correct_domains(self):
+        """_run_understanding infers domains without an LLM call."""
+        g = Gremlin()
+        result = g._run_understanding("checkout flow with Stripe", None, "quick")
+
+        assert result.scope == "checkout flow with Stripe"
+        assert "payments" in result.matched_domains
+        assert result.depth == "quick"
+        assert result.threshold == g.threshold
+        assert result.context is None
+
+    def test_run_understanding_with_context(self):
+        g = Gremlin()
+        result = g._run_understanding("auth system", "Using JWT", "deep")
+
+        assert result.context == "Using JWT"
+        assert result.depth == "deep"
+
+    def test_run_ideation_selects_patterns(self):
+        """_run_ideation returns a non-zero pattern count without an LLM call."""
+        from gremlin.core.stages import UnderstandingResult
+
+        g = Gremlin()
+        u = UnderstandingResult(
+            scope="checkout flow",
+            matched_domains=["payments"],
+            depth="quick",
+            threshold=80,
+        )
+        result = g._run_ideation(u)
+
+        assert result.pattern_count > 0
+        assert "universal" in result.selected_patterns
+        assert result.understanding is u
+
+    def test_run_rollout_calls_provider_once(self, mock_rollout_response):
+        """_run_rollout makes exactly one LLM call."""
+        from gremlin.core.stages import IdeationResult, UnderstandingResult
+
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.return_value = mock_rollout_response
+            mock_get_provider.return_value = mock_provider
+
+            g = Gremlin()
+            u = UnderstandingResult("checkout", ["payments"], "quick", 80)
+            i = IdeationResult(u, {"universal": []}, 0)
+            result = g._run_rollout(i)
+
+            assert mock_provider.complete.call_count == 1
+            assert result.raw_response == mock_rollout_response.text
+
+    def test_run_judgment_parses_risks(self, mock_rollout_response):
+        """_run_judgment returns a JudgmentResult with parsed risk dicts."""
+        from gremlin.core.stages import IdeationResult, RolloutResult, UnderstandingResult
+
+        g = Gremlin()
+        u = UnderstandingResult("checkout", ["payments"], "quick", 80)
+        i = IdeationResult(u, {"universal": []}, 0)
+        r = RolloutResult(i, mock_rollout_response.text)
+
+        result = g._run_judgment(r, validate=False)
+
+        assert len(result.risks) == 1
+        assert result.risks[0]["severity"] == "CRITICAL"
+        assert result.risks[0]["confidence"] == 95
+        assert result.validated is False
+
+    def test_build_result_produces_analysis_result(self, mock_rollout_response):
+        """_build_result converts JudgmentResult → AnalysisResult correctly."""
+        from gremlin.core.stages import IdeationResult, JudgmentResult, RolloutResult, UnderstandingResult
+
+        g = Gremlin()
+        u = UnderstandingResult("checkout", ["payments"], "quick", 80)
+        i = IdeationResult(u, {"universal": []}, 5)
+        r = RolloutResult(i, mock_rollout_response.text)
+        j = JudgmentResult(
+            rollout=r,
+            risks=[{
+                "severity": "CRITICAL", "confidence": 95,
+                "scenario": "What if payment fails?", "impact": "Order lost",
+                "domains": ["payments"], "title": "Payment Failure",
+            }],
+        )
+
+        result = g._build_result(j, raw_response=mock_rollout_response.text)
+
+        assert result.scope == "checkout"
+        assert len(result.risks) == 1
+        assert result.risks[0].severity == "CRITICAL"
+        assert result.risks[0].title == "Payment Failure"
+        assert result.pattern_count == 5
+        assert result.matched_domains == ["payments"]
+
+
 class TestImportAPI:
     """Test that API can be imported as specified in Phase 1."""
 

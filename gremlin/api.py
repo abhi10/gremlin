@@ -18,6 +18,7 @@ from gremlin.core.patterns import (
     select_patterns,
 )
 from gremlin.core.prompts import build_prompt, load_system_prompt
+from gremlin.core.stages import IdeationResult, JudgmentResult, RolloutResult, UnderstandingResult
 from gremlin.core.validator import VALIDATION_SYSTEM_PROMPT, build_validation_prompt
 from gremlin.llm.factory import get_provider
 
@@ -313,60 +314,11 @@ class Gremlin:
             >>> code = open("checkout.py").read()
             >>> result = gremlin.analyze("checkout", context=code)
         """
-        # Infer domains from scope
-        matched_domains = infer_domains(scope, self._domain_keywords)
-
-        # Select relevant patterns
-        selected_patterns = select_patterns(scope, self._patterns, matched_domains)
-
-        # Build prompts
-        full_system, user_message = build_prompt(
-            self._system_prompt,
-            selected_patterns,
-            scope,
-            depth,
-            self.threshold,
-            context,
-        )
-
-        # Lazy-init and cache LLM provider (avoids recreating per call)
-        if self._provider is None:
-            self._provider = get_provider(
-                provider=self.provider_name,
-                model=self.model_name,
-            )
-
-        response = self._provider.complete(full_system, user_message)
-        response_text = response.text
-
-        # Optional second pass: LLM-as-judge filters hallucinations and duplicates
-        if validate:
-            try:
-                validation_prompt = build_validation_prompt(scope, response_text)
-                validated_response = self._provider.complete(
-                    VALIDATION_SYSTEM_PROMPT, validation_prompt
-                )
-                response_text = validated_response.text
-            except Exception:
-                # Gracefully fall back to unvalidated results on any error
-                pass
-
-        # Parse response into structured risks
-        risks = self._parse_risks(response_text, matched_domains)
-
-        return AnalysisResult(
-            scope=scope,
-            risks=risks,
-            matched_domains=matched_domains,
-            pattern_count=len(selected_patterns.get("universal", []))
-            + sum(
-                len(patterns)
-                for patterns in selected_patterns.get("domain_specific", {}).values()
-            ),
-            raw_response=response.text,
-            depth=depth,
-            threshold=self.threshold,
-        )
+        u = self._run_understanding(scope, context, depth)
+        i = self._run_ideation(u)
+        r = self._run_rollout(i)
+        j = self._run_judgment(r, validate=validate)
+        return self._build_result(j, raw_response=r.raw_response)
 
     async def analyze_async(
         self,
@@ -399,6 +351,113 @@ class Gremlin:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None, lambda: self.analyze(scope, context, depth, validate)
+        )
+
+    # ------------------------------------------------------------------
+    # Pipeline stage methods (internal)
+    # Called sequentially by analyze(). Exposed as private to allow
+    # independent testing and future CLI stage commands (v0.3).
+    # ------------------------------------------------------------------
+
+    def _run_understanding(
+        self, scope: str, context: str | None, depth: str
+    ) -> UnderstandingResult:
+        """Stage 1 — Understanding: infer domains from scope keywords."""
+        matched_domains = infer_domains(scope, self._domain_keywords)
+        return UnderstandingResult(
+            scope=scope,
+            matched_domains=matched_domains,
+            depth=depth,
+            threshold=self.threshold,
+            context=context,
+        )
+
+    def _run_ideation(self, u: UnderstandingResult) -> IdeationResult:
+        """Stage 2 — Ideation: select patterns for the matched domains."""
+        selected = select_patterns(u.scope, self._patterns, u.matched_domains)
+        pattern_count = len(selected.get("universal", [])) + sum(
+            len(p) for p in selected.get("domain_specific", {}).values()
+        )
+        return IdeationResult(
+            understanding=u,
+            selected_patterns=selected,
+            pattern_count=pattern_count,
+        )
+
+    def _run_rollout(self, i: IdeationResult) -> RolloutResult:
+        """Stage 3 — Rollout: call the LLM with the constructed prompt."""
+        u = i.understanding
+        full_system, user_message = build_prompt(
+            self._system_prompt,
+            i.selected_patterns,
+            u.scope,
+            u.depth,
+            u.threshold,
+            u.context,
+        )
+        if self._provider is None:
+            self._provider = get_provider(
+                provider=self.provider_name,
+                model=self.model_name,
+            )
+        response = self._provider.complete(full_system, user_message)
+        return RolloutResult(ideation=i, raw_response=response.text)
+
+    def _run_judgment(self, r: RolloutResult, validate: bool = False) -> JudgmentResult:
+        """Stage 4 — Judgment: parse risks and optionally validate them.
+
+        When validate=True, a second LLM call filters hallucinations and
+        duplicates. On any validation error, falls back to unvalidated risks.
+        """
+        response_text = r.raw_response
+        validation_summary: str | None = None
+        validated = False
+
+        if validate:
+            try:
+                validation_prompt = build_validation_prompt(
+                    r.ideation.understanding.scope, response_text
+                )
+                validated_response = self._provider.complete(
+                    VALIDATION_SYSTEM_PROMPT, validation_prompt
+                )
+                response_text = validated_response.text
+                validated = True
+                # Extract summary block appended by the validator
+                if "---" in response_text:
+                    validation_summary = response_text.split("---")[-1].strip()
+            except Exception:
+                pass  # Graceful fallback to unvalidated
+
+        risks = self._parse_risks(response_text, r.ideation.understanding.matched_domains)
+        return JudgmentResult(
+            rollout=r,
+            risks=[risk.to_dict() for risk in risks],
+            validation_summary=validation_summary,
+            validated=validated,
+        )
+
+    def _build_result(self, j: JudgmentResult, raw_response: str) -> AnalysisResult:
+        """Construct the public AnalysisResult from a completed JudgmentResult."""
+        risks = [
+            Risk(
+                severity=d["severity"],
+                confidence=d["confidence"],
+                scenario=d["scenario"],
+                impact=d["impact"],
+                domains=d.get("domains", []),
+                title=d.get("title", ""),
+            )
+            for d in j.risks
+        ]
+        return AnalysisResult(
+            scope=j.scope,
+            risks=risks,
+            matched_domains=j.matched_domains,
+            pattern_count=j.pattern_count,
+            raw_response=raw_response,
+            depth=j.depth,
+            threshold=j.threshold,
         )
 
     def _parse_risks(self, response_text: str, domains: list[str]) -> list[Risk]:
