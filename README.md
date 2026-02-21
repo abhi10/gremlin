@@ -234,6 +234,8 @@ pytest
 
 **`understand` options:** `--depth quick|deep` · `--threshold 0-100` · `--run-dir PATH`
 
+**`ideate` / `rollout` options:** `--run-dir PATH`
+
 **`judge` options:** `--validate` · `--run-dir PATH`
 
 ---
