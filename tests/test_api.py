@@ -363,6 +363,220 @@ class TestGremlin:
         risks = gremlin._parse_risks(response, [])
         assert len(risks) == 0
 
+    def test_analyze_validate_false_makes_one_call(self, mock_llm_response):
+        """Default validate=False makes exactly one LLM call."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.return_value = mock_llm_response
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            result = gremlin.analyze("checkout flow")
+
+            assert mock_provider.complete.call_count == 1
+            assert len(result.risks) == 2
+
+    def test_analyze_validate_true_makes_two_calls(self, mock_llm_response):
+        """validate=True makes two LLM calls: rollout + judgment."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            # First call: rollout. Second call: validation judgment.
+            mock_provider.complete.side_effect = [
+                mock_llm_response,
+                LLMResponse(
+                    text="""### 🔴 CRITICAL (95%)
+
+**Payment Race Condition**
+
+> What if payment succeeds but order creation fails?
+
+- **Impact:** Customer charged but receives no order confirmation
+- **Domain:** payments
+""",
+                    model="test-model",
+                    provider="test",
+                ),
+            ]
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            result = gremlin.analyze("checkout flow", validate=True)
+
+            assert mock_provider.complete.call_count == 2
+            # Judgment filtered 2 risks down to 1
+            assert len(result.risks) == 1
+            assert result.risks[0].severity == "CRITICAL"
+
+    def test_analyze_validate_passes_scope_to_judgment(self, mock_llm_response):
+        """Validation prompt includes the original scope."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.return_value = mock_llm_response
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            gremlin.analyze("auth system", validate=True)
+
+            second_call_args = mock_provider.complete.call_args_list[1]
+            user_message = second_call_args[0][1]
+            assert "auth system" in user_message
+
+    def test_analyze_validate_graceful_fallback(self, mock_llm_response):
+        """When validation LLM call fails, falls back to unvalidated results."""
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.side_effect = [
+                mock_llm_response,
+                Exception("API rate limit"),
+            ]
+            mock_get_provider.return_value = mock_provider
+
+            gremlin = Gremlin()
+            result = gremlin.analyze("checkout", validate=True)
+
+            # Should not raise; returns unvalidated risks
+            assert len(result.risks) == 2
+
+    def test_analyze_async_validate_param_forwarded(self, mock_llm_response):
+        """analyze_async forwards validate param to analyze()."""
+        import anyio
+
+        async def run_test():
+            with patch("gremlin.api.get_provider") as mock_get_provider:
+                mock_provider = Mock()
+                mock_provider.complete.return_value = mock_llm_response
+                mock_get_provider.return_value = mock_provider
+
+                gremlin = Gremlin()
+                result = await gremlin.analyze_async("checkout", validate=False)
+
+                assert mock_provider.complete.call_count == 1
+                assert isinstance(result, AnalysisResult)
+
+        anyio.run(run_test)
+
+
+class TestGremlinStageMethods:
+    """Test the internal _run_* stage methods introduced in Step 3."""
+
+    @pytest.fixture
+    def mock_rollout_response(self):
+        return LLMResponse(
+            text="""### 🔴 CRITICAL (95%)
+
+**Payment Race Condition**
+
+> What if payment succeeds but order creation fails?
+
+- **Impact:** Customer charged but receives no order confirmation
+- **Domain:** payments
+""",
+            model="test-model",
+            provider="test",
+        )
+
+    def test_stage_methods_exist(self):
+        g = Gremlin()
+        assert callable(g._run_understanding)
+        assert callable(g._run_ideation)
+        assert callable(g._run_rollout)
+        assert callable(g._run_judgment)
+        assert callable(g._build_result)
+
+    def test_run_understanding_returns_correct_domains(self):
+        """_run_understanding infers domains without an LLM call."""
+        g = Gremlin()
+        result = g._run_understanding("checkout flow with Stripe", None, "quick")
+
+        assert result.scope == "checkout flow with Stripe"
+        assert "payments" in result.matched_domains
+        assert result.depth == "quick"
+        assert result.threshold == g.threshold
+        assert result.context is None
+
+    def test_run_understanding_with_context(self):
+        g = Gremlin()
+        result = g._run_understanding("auth system", "Using JWT", "deep")
+
+        assert result.context == "Using JWT"
+        assert result.depth == "deep"
+
+    def test_run_ideation_selects_patterns(self):
+        """_run_ideation returns a non-zero pattern count without an LLM call."""
+        from gremlin.core.stages import UnderstandingResult
+
+        g = Gremlin()
+        u = UnderstandingResult(
+            scope="checkout flow",
+            matched_domains=["payments"],
+            depth="quick",
+            threshold=80,
+        )
+        result = g._run_ideation(u)
+
+        assert result.pattern_count > 0
+        assert "universal" in result.selected_patterns
+        assert result.understanding is u
+
+    def test_run_rollout_calls_provider_once(self, mock_rollout_response):
+        """_run_rollout makes exactly one LLM call."""
+        from gremlin.core.stages import IdeationResult, UnderstandingResult
+
+        with patch("gremlin.api.get_provider") as mock_get_provider:
+            mock_provider = Mock()
+            mock_provider.complete.return_value = mock_rollout_response
+            mock_get_provider.return_value = mock_provider
+
+            g = Gremlin()
+            u = UnderstandingResult("checkout", ["payments"], "quick", 80)
+            i = IdeationResult(u, {"universal": []}, 0)
+            result = g._run_rollout(i)
+
+            assert mock_provider.complete.call_count == 1
+            assert result.raw_response == mock_rollout_response.text
+
+    def test_run_judgment_parses_risks(self, mock_rollout_response):
+        """_run_judgment returns a JudgmentResult with parsed risk dicts."""
+        from gremlin.core.stages import IdeationResult, RolloutResult, UnderstandingResult
+
+        g = Gremlin()
+        u = UnderstandingResult("checkout", ["payments"], "quick", 80)
+        i = IdeationResult(u, {"universal": []}, 0)
+        r = RolloutResult(i, mock_rollout_response.text)
+
+        result = g._run_judgment(r, validate=False)
+
+        assert len(result.risks) == 1
+        assert result.risks[0]["severity"] == "CRITICAL"
+        assert result.risks[0]["confidence"] == 95
+        assert result.validated is False
+
+    def test_build_result_produces_analysis_result(self, mock_rollout_response):
+        """_build_result converts JudgmentResult → AnalysisResult correctly."""
+        from gremlin.core.stages import IdeationResult, JudgmentResult, RolloutResult, UnderstandingResult
+
+        g = Gremlin()
+        u = UnderstandingResult("checkout", ["payments"], "quick", 80)
+        i = IdeationResult(u, {"universal": []}, 5)
+        r = RolloutResult(i, mock_rollout_response.text)
+        j = JudgmentResult(
+            rollout=r,
+            risks=[{
+                "severity": "CRITICAL", "confidence": 95,
+                "scenario": "What if payment fails?", "impact": "Order lost",
+                "domains": ["payments"], "title": "Payment Failure",
+            }],
+        )
+
+        result = g._build_result(j, raw_response=mock_rollout_response.text)
+
+        assert result.scope == "checkout"
+        assert len(result.risks) == 1
+        assert result.risks[0].severity == "CRITICAL"
+        assert result.risks[0].title == "Payment Failure"
+        assert result.pattern_count == 5
+        assert result.matched_domains == ["payments"]
+
 
 class TestImportAPI:
     """Test that API can be imported as specified in Phase 1."""
