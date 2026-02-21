@@ -16,9 +16,8 @@ Risk objects at the boundary.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 _SCHEMA_VERSION = "1"
 
