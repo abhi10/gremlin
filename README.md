@@ -44,6 +44,35 @@ gremlin review "payment refunds" --depth deep --threshold 60
 gremlin learn "Nav showed Login after auth" --domain auth --source prod
 ```
 
+#### Pipeline stage commands (v0.3)
+
+Run each analysis stage independently — useful for caching, debugging, or building custom pipelines:
+
+```bash
+# Stage 1 — infer domains, write understanding.json (no LLM call)
+gremlin understand "checkout flow"
+
+# Stage 2 — select patterns, write scenarios.json (no LLM call)
+gremlin ideate
+
+# Stage 3 — call LLM, write results.json
+gremlin rollout
+
+# Stage 4 — parse + score risks, write scores.json
+gremlin judge
+
+# With optional validation pass
+gremlin judge --validate
+
+# Custom run directory (default: .gremlin/run/)
+gremlin understand "auth" --run-dir /tmp/my-run
+gremlin ideate --run-dir /tmp/my-run
+gremlin rollout --run-dir /tmp/my-run
+gremlin judge --run-dir /tmp/my-run
+```
+
+Each stage reads the previous stage's artifact and writes its own — `understanding.json` → `scenarios.json` → `results.json` → `scores.json`.
+
 ### 2. GitHub Action
 
 Add to any repo — Gremlin posts a risk report on every PR automatically.
@@ -190,14 +219,22 @@ pytest
 
 | Command | Description |
 |---------|-------------|
-| `gremlin review "scope"` | Analyze a feature for risks |
+| `gremlin review "scope"` | Full pipeline in one command |
 | `gremlin review "scope" --context @file` | With file context |
 | `git diff \| gremlin review "changes" --context -` | With diff via stdin |
 | `gremlin patterns list` | Show all pattern domains |
 | `gremlin patterns show payments` | Show patterns for a domain |
 | `gremlin learn "incident" --domain auth` | Learn from incidents |
+| `gremlin understand "scope"` | Stage 1 — infer domains (no LLM) |
+| `gremlin ideate` | Stage 2 — select patterns (no LLM) |
+| `gremlin rollout` | Stage 3 — call LLM |
+| `gremlin judge` | Stage 4 — parse and score risks |
 
 **`review` options:** `--depth quick|deep` · `--threshold 0-100` · `--output rich|md|json` · `--validate`
+
+**`understand` options:** `--depth quick|deep` · `--threshold 0-100` · `--run-dir PATH`
+
+**`judge` options:** `--validate` · `--run-dir PATH`
 
 ---
 
