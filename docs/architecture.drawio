@@ -291,389 +291,182 @@
   </diagram>
 
   <!-- ================================================================ -->
-  <!-- TAB 2: DATA FLOW                                                 -->
+  <!-- TAB 2: DATA FLOW (v0.3 — simplified pipeline view)              -->
   <!-- ================================================================ -->
   <diagram id="dataflow" name="Data Flow">
-    <mxGraphModel dx="1422" dy="894" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="600" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <!-- TITLE -->
-        <mxCell id="df-title" value="Gremlin — Data Flow" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
-          <mxGeometry x="560" y="20" width="280" height="40" as="geometry" />
+        <mxCell id="df-title" value="Gremlin — Pipeline Data Flow" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=22;fontStyle=1;fontColor=#1a1a2e;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="400" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="df-subtitle" value="Request lifecycle from user input to structured risk output  —  v0.3 named pipeline stages" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=12;fontColor=#666666;" vertex="1" parent="1">
-          <mxGeometry x="380" y="55" width="550" height="20" as="geometry" />
-        </mxCell>
-
-        <!-- =============================== -->
-        <!-- STAGE ARTIFACT COLUMN (v0.3)    -->
-        <!-- =============================== -->
-        <mxCell id="artifact-title" value="&lt;b&gt;Stage Artifacts (v0.3)&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#999&quot;&gt;.gremlin/run/&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;strokeColor=#636e72;fillColor=#f0f0f0;arcSize=12;rounded=1;fontSize=10;fontColor=#444;" vertex="1" parent="1">
-          <mxGeometry x="890" y="270" width="160" height="35" as="geometry" />
-        </mxCell>
-        <mxCell id="art1" value="&lt;b&gt;understanding.json&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#555&quot;&gt;scope, matched_domains,&lt;br&gt;depth, threshold&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=10;fillColor=#d5f5e3;strokeColor=#00b894;shadow=1;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="890" y="315" width="160" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="art1-arrow" value="" style="endArrow=open;endSize=8;html=1;strokeColor=#00b894;strokeWidth=1.5;dashed=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="970" y="365" as="sourcePoint" />
-            <mxPoint x="970" y="390" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="art2" value="&lt;b&gt;scenarios.json&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#555&quot;&gt;understanding + &lt;br&gt;selected_patterns&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=10;fillColor=#d5f5e3;strokeColor=#d4a017;shadow=1;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="890" y="395" width="160" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="art2-arrow" value="" style="endArrow=open;endSize=8;html=1;strokeColor=#d4a017;strokeWidth=1.5;dashed=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="970" y="445" as="sourcePoint" />
-            <mxPoint x="970" y="470" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="art3" value="&lt;b&gt;results.json&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#555&quot;&gt;scenarios + &lt;br&gt;raw_response&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=10;fillColor=#d5f5e3;strokeColor=#e17055;shadow=1;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="890" y="475" width="160" height="50" as="geometry" />
-        </mxCell>
-        <mxCell id="art3-arrow" value="" style="endArrow=open;endSize=8;html=1;strokeColor=#e17055;strokeWidth=1.5;dashed=1;" edge="1" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <mxPoint x="970" y="525" as="sourcePoint" />
-            <mxPoint x="970" y="550" as="targetPoint" />
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="art4" value="&lt;b&gt;scores.json&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#555&quot;&gt;results + risks[],&lt;br&gt;validation_summary&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=10;fillColor=#d5f5e3;strokeColor=#0984e3;shadow=1;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="890" y="555" width="160" height="50" as="geometry" />
+        <mxCell id="df-subtitle" value="v0.3 — four named stages, each reads the previous artifact and writes its own" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=12;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="400" y="55" width="550" height="20" as="geometry" />
         </mxCell>
 
         <!-- =============================== -->
-        <!-- STEP 1: USER INPUT              -->
+        <!-- USER INPUT                      -->
         <!-- =============================== -->
-        <mxCell id="step1-label" value="① User Input" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#6c5ce7;" vertex="1" parent="1">
-          <mxGeometry x="100" y="90" width="110" height="25" as="geometry" />
+        <mxCell id="user-input" value="&lt;b&gt;User Input&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;scope + context&lt;br&gt;depth · threshold&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6c5ce7;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="150" height="80" as="geometry" />
         </mxCell>
 
-        <mxCell id="user-input" value="&lt;b&gt;User Input&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;scope: &quot;checkout flow&quot;&lt;br&gt;context: @src/checkout.py&lt;br&gt;depth: quick | deep&lt;br&gt;threshold: 80&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6c5ce7;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="100" y="120" width="200" height="90" as="geometry" />
+        <!-- =============================== -->
+        <!-- STAGE 1: UNDERSTANDING          -->
+        <!-- =============================== -->
+        <mxCell id="stage1" value="&lt;b&gt;① Understanding&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Infer domains from&lt;br&gt;scope keywords&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#ccc&quot;&gt;inference.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#00b894;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="120" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="art1" value="&lt;font style=&quot;font-size:9px&quot;&gt;understanding.json&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5f5e3;strokeColor=#00b894;fontSize=9;fontColor=#2d3436;" vertex="1" parent="1">
+          <mxGeometry x="290" y="230" width="150" height="22" as="geometry" />
         </mxCell>
 
-        <mxCell id="ctx-resolve" value="&lt;b&gt;Context Resolution&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;String → direct&lt;br&gt;@file → read file&lt;br&gt;- → read stdin&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a29bfe;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="370" y="120" width="170" height="90" as="geometry" />
+        <!-- =============================== -->
+        <!-- STAGE 2: IDEATION               -->
+        <!-- =============================== -->
+        <mxCell id="stage2" value="&lt;b&gt;② Ideation&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Select universal +&lt;br&gt;domain patterns&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#ccc&quot;&gt;patterns.py&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdcb6e;fontColor=#2d3436;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="120" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="art2" value="&lt;font style=&quot;font-size:9px&quot;&gt;scenarios.json&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffeaa7;strokeColor=#d4a017;fontSize=9;fontColor=#2d3436;" vertex="1" parent="1">
+          <mxGeometry x="530" y="230" width="150" height="22" as="geometry" />
         </mxCell>
 
-        <mxCell id="ea1" value="scope + context" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;fontSize=10;fontColor=#636e72;" edge="1" source="user-input" target="ctx-resolve" parent="1">
+        <!-- =============================== -->
+        <!-- STAGE 3: ROLLOUT                -->
+        <!-- =============================== -->
+        <mxCell id="stage3" value="&lt;b&gt;③ Rollout&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Build prompt +&lt;br&gt;call LLM&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#ccc&quot;&gt;prompts.py + llm/&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e17055;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="120" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="art3" value="&lt;font style=&quot;font-size:9px&quot;&gt;results.json&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fab1a0;strokeColor=#e17055;fontSize=9;fontColor=#2d3436;" vertex="1" parent="1">
+          <mxGeometry x="770" y="230" width="150" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- =============================== -->
+        <!-- STAGE 4: JUDGMENT               -->
+        <!-- =============================== -->
+        <mxCell id="stage4" value="&lt;b&gt;④ Judgment&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Parse risks +&lt;br&gt;score severity&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:9px&quot; color=&quot;#ccc&quot;&gt;api.py:_parse_risks&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="120" width="170" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="art4" value="&lt;font style=&quot;font-size:9px&quot;&gt;scores.json&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#74b9ff;strokeColor=#0984e3;fontSize=9;fontColor=#2d3436;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="230" width="150" height="22" as="geometry" />
+        </mxCell>
+
+        <!-- =============================== -->
+        <!-- OUTPUT                          -->
+        <!-- =============================== -->
+        <mxCell id="output" value="&lt;b&gt;Output&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;AnalysisResult&lt;br&gt;JSON · JUnit · Rich&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#74b9ff;fontColor=#2d3436;strokeColor=#0984e3;arcSize=15;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="130" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- =============================== -->
+        <!-- MAIN PIPELINE ARROWS            -->
+        <!-- =============================== -->
+        <mxCell id="ea1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="user-input" target="stage1" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="stage1" target="stage2" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="stage2" target="stage3" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="stage3" target="stage4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="stage4" target="output" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- =============================== -->
-        <!-- STEP 2: DOMAIN INFERENCE        -->
-        <!-- Stage 1: Understanding          -->
+        <!-- ANTHROPIC API (below Rollout)   -->
         <!-- =============================== -->
-        <mxCell id="step2-label" value="② Domain Inference" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#00b894;" vertex="1" parent="1">
-          <mxGeometry x="100" y="250" width="160" height="25" as="geometry" />
+        <mxCell id="llm-cloud" value="&lt;b&gt;Anthropic API&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;claude-sonnet-4&lt;/font&gt;" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#ffeaa7;strokeColor=#d4a017;shadow=1;fontSize=11;align=center;" vertex="1" parent="1">
+          <mxGeometry x="760" y="310" width="170" height="80" as="geometry" />
         </mxCell>
-        <mxCell id="step2-stage" value="Stage 1: _run_understanding()" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#00b894;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="100" y="270" width="200" height="18" as="geometry" />
-        </mxCell>
-
-        <mxCell id="scope-str" value="&lt;font style=&quot;font-size:11px&quot;&gt;&lt;b&gt;&quot;checkout flow&quot;&lt;/b&gt;&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dfe6e9;strokeColor=#b2bec3;shadow=0;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="295" width="170" height="35" as="geometry" />
-        </mxCell>
-
-        <mxCell id="kw-match" value="&lt;b&gt;Keyword Matching&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;scope_lower → domain_keywords&lt;br&gt;&lt;br&gt;&lt;/font&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#999&quot;&gt;&quot;checkout&quot; → &lt;/font&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#00b894&quot;&gt;[payments]&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#999&quot;&gt;&quot;auth login&quot; → &lt;/font&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#00b894&quot;&gt;[auth]&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#999&quot;&gt;&quot;upload s3&quot; → &lt;/font&gt;&lt;font style=&quot;font-size:10px&quot; color=&quot;#00b894&quot;&gt;[files, infrastructure]&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#00b894;fontColor=#ffffff;strokeColor=none;arcSize=15;shadow=1;" vertex="1" parent="1">
-          <mxGeometry x="350" y="275" width="250" height="110" as="geometry" />
-        </mxCell>
-
-        <mxCell id="domains-out" value="&lt;font style=&quot;font-size:11px&quot;&gt;&lt;b&gt;matched_domains&lt;/b&gt;&lt;br&gt;[&quot;payments&quot;]&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#55efc4;strokeColor=#00b894;shadow=0;fontSize=11;fontColor=#2d3436;" vertex="1" parent="1">
-          <mxGeometry x="680" y="295" width="160" height="45" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="scope-str" target="kw-match" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ea3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="kw-match" target="domains-out" parent="1">
+        <mxCell id="ea-llm" style="rounded=1;strokeColor=#d4a017;strokeWidth=2;" edge="1" source="stage3" target="llm-cloud" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- =============================== -->
-        <!-- STEP 3: PATTERN SELECTION       -->
-        <!-- Stage 2: Ideation               -->
+        <!-- PATTERN STORE (below Ideation)  -->
         <!-- =============================== -->
-        <mxCell id="step3-label" value="③ Pattern Selection" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#d4a017;" vertex="1" parent="1">
-          <mxGeometry x="100" y="430" width="160" height="25" as="geometry" />
+        <mxCell id="patterns-store" value="&lt;b&gt;107 Patterns&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;14 domains&lt;br&gt;breaking.yaml + incidents&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=12;fillColor=#ffeaa7;strokeColor=#d4a017;shadow=1;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="530" y="310" width="150" height="65" as="geometry" />
         </mxCell>
-        <mxCell id="step3-stage" value="Stage 2: _run_ideation()" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#d4a017;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="100" y="450" width="180" height="18" as="geometry" />
-        </mxCell>
-
-        <mxCell id="yaml-store" value="&lt;b&gt;breaking.yaml&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;107 patterns&lt;br&gt;14 domains&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#ffeaa7;strokeColor=#d4a017;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="470" width="130" height="80" as="geometry" />
-        </mxCell>
-
-        <mxCell id="incidents-store" value="&lt;b&gt;incidents/&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;*.yaml&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#ffeaa7;strokeColor=#d4a017;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="565" width="130" height="55" as="geometry" />
-        </mxCell>
-
-        <mxCell id="selector" value="&lt;b&gt;select_patterns()&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;1. Always include &lt;b&gt;universal&lt;/b&gt; patterns&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;(Boundary, State, Timing ...)&lt;br&gt;&lt;br&gt;2. Add &lt;b&gt;domain-specific&lt;/b&gt; for&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;each matched domain&lt;br&gt;&lt;br&gt;3. Merge &lt;b&gt;incident&lt;/b&gt; patterns&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;(deduplicated)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdcb6e;fontColor=#2d3436;strokeColor=#d4a017;arcSize=12;shadow=1;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="310" y="450" width="250" height="180" as="geometry" />
-        </mxCell>
-
-        <mxCell id="selected-out" value="&lt;b&gt;selected_patterns&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;{&lt;br&gt;&amp;nbsp;&amp;nbsp;universal: [...],&lt;br&gt;&amp;nbsp;&amp;nbsp;domain: {&lt;br&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;payments: [...]&lt;br&gt;&amp;nbsp;&amp;nbsp;}&lt;br&gt;}&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffeaa7;strokeColor=#d4a017;shadow=0;fontSize=11;fontColor=#2d3436;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="640" y="465" width="190" height="120" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d4a017;strokeWidth=2;" edge="1" source="yaml-store" target="selector" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ea5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#d4a017;strokeWidth=2;" edge="1" source="incidents-store" target="selector" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ea6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="domains-out" target="selector" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="760" y="415" />
-              <mxPoint x="435" y="415" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="ea7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="selector" target="selected-out" parent="1">
+        <mxCell id="ea-pat" style="rounded=1;strokeColor=#d4a017;strokeWidth=2;" edge="1" source="patterns-store" target="stage2" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- =============================== -->
-        <!-- STEP 4: PROMPT BUILDING         -->
-        <!-- Stage 3: Rollout                -->
+        <!-- OPTIONAL VALIDATION             -->
         <!-- =============================== -->
-        <mxCell id="step4-label" value="④ Prompt Construction" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#e17055;" vertex="1" parent="1">
-          <mxGeometry x="100" y="675" width="180" height="25" as="geometry" />
+        <mxCell id="val-pass" value="&lt;b&gt;--validate&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;2nd LLM pass&lt;br&gt;filters hallucinations&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#55efc4;fontColor=#2d3436;strokeColor=#00b894;strokeWidth=1;arcSize=15;shadow=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="315" width="150" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="step4-stage" value="Stage 3: _run_rollout()" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#e17055;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="100" y="694" width="175" height="18" as="geometry" />
-        </mxCell>
-
-        <mxCell id="sys-prompt" value="&lt;b&gt;system.md&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Gremlin persona&lt;br&gt;+ output format&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=15;fillColor=#fab1a0;strokeColor=#e17055;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="100" y="715" width="130" height="70" as="geometry" />
-        </mxCell>
-
-        <mxCell id="builder" value="&lt;b&gt;build_prompt()&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;&lt;b&gt;system_prompt =&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;persona + patterns YAML&lt;br&gt;&lt;br&gt;&lt;b&gt;user_message =&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;scope + depth + threshold&lt;br&gt;&amp;nbsp;&amp;nbsp;+ optional context&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e17055;fontColor=#ffffff;strokeColor=none;arcSize=12;shadow=1;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="310" y="698" width="250" height="140" as="geometry" />
-        </mxCell>
-
-        <mxCell id="prompt-out" value="&lt;b&gt;Constructed Prompt&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;(system_prompt, user_message)&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fab1a0;strokeColor=#e17055;shadow=0;fontSize=11;fontColor=#2d3436;" vertex="1" parent="1">
-          <mxGeometry x="640" y="738" width="210" height="45" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#e17055;strokeWidth=2;" edge="1" source="sys-prompt" target="builder" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="ea9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="selected-out" target="builder" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="735" y="655" />
-              <mxPoint x="435" y="655" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="ea9b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="ctx-resolve" target="builder" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="560" y="165" />
-              <mxPoint x="600" y="165" />
-              <mxPoint x="600" y="768" />
-              <mxPoint x="560" y="768" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="ea10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="builder" target="prompt-out" parent="1">
+        <mxCell id="ea-val" style="rounded=1;strokeColor=#00b894;strokeWidth=2;dashed=1;" edge="1" source="stage4" target="val-pass" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
         <!-- =============================== -->
-        <!-- STEP 5: LLM CALL               -->
-        <!-- (part of Stage 3: Rollout)      -->
+        <!-- FROZEN DATACLASSES NOTE         -->
         <!-- =============================== -->
-        <mxCell id="step5-label" value="⑤ LLM Call" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#e17055;" vertex="1" parent="1">
-          <mxGeometry x="920" y="675" width="90" height="25" as="geometry" />
-        </mxCell>
-
-        <mxCell id="llm-call" value="&lt;b&gt;Anthropic API&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;messages.create()&lt;br&gt;model: claude-sonnet-4&lt;br&gt;max_tokens: 4096&lt;/font&gt;" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#ffeaa7;strokeColor=#d4a017;shadow=1;fontSize=11;align=center;" vertex="1" parent="1">
-          <mxGeometry x="910" y="710" width="220" height="110" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="prompt-out" target="llm-call" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- =============================== -->
-        <!-- STEP 6: RESPONSE PARSING        -->
-        <!-- Stage 4: Judgment               -->
-        <!-- =============================== -->
-        <mxCell id="step6-label" value="⑥ Response Parsing" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#0984e3;" vertex="1" parent="1">
-          <mxGeometry x="920" y="430" width="160" height="25" as="geometry" />
-        </mxCell>
-        <mxCell id="step6-stage" value="Stage 4: _run_judgment()" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#0984e3;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="920" y="450" width="185" height="18" as="geometry" />
-        </mxCell>
-
-        <mxCell id="raw-md" value="&lt;b&gt;Raw Markdown&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;## 🔴 CRITICAL (95%)&lt;br&gt;**Title**&lt;br&gt;&amp;gt; What if ...?&lt;br&gt;- **Impact:** ...&lt;br&gt;- **Domain:** ...&lt;/font&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dfe6e9;strokeColor=#b2bec3;shadow=0;fontSize=11;fontColor=#2d3436;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="930" y="475" width="190" height="110" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea12" value="LLMResponse.text" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;fontSize=10;fontColor=#636e72;" edge="1" source="llm-call" target="raw-md" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <mxCell id="risk-parser" value="&lt;b&gt;_parse_risks()&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;1. Split by ## / ### headers&lt;br&gt;2. Regex: severity + confidence&lt;br&gt;3. Extract **Title**&lt;br&gt;4. Extract &amp;gt; scenario&lt;br&gt;5. Extract **Impact**&lt;br&gt;6. Extract **Domain**&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;fontColor=#ffffff;strokeColor=none;arcSize=12;shadow=1;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="1200" y="455" width="220" height="130" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#636e72;strokeWidth=2;" edge="1" source="raw-md" target="risk-parser" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- =============================== -->
-        <!-- STEP 7: STRUCTURED OUTPUT       -->
-        <!-- =============================== -->
-        <mxCell id="step7-label" value="⑦ Structured Output" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=13;fontStyle=1;fontColor=#0984e3;" vertex="1" parent="1">
-          <mxGeometry x="920" y="90" width="160" height="25" as="geometry" />
-        </mxCell>
-
-        <mxCell id="risk-obj" value="&lt;b&gt;Risk&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;severity: &quot;CRITICAL&quot;&lt;br&gt;confidence: 95&lt;br&gt;scenario: &quot;What if...&quot;&lt;br&gt;impact: &quot;...&quot;&lt;br&gt;title: &quot;...&quot;&lt;br&gt;domains: [...]&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#74b9ff;fontColor=#2d3436;strokeColor=#0984e3;arcSize=12;shadow=1;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="920" y="120" width="175" height="120" as="geometry" />
-        </mxCell>
-
-        <mxCell id="result-obj" value="&lt;b&gt;AnalysisResult&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;scope, risks[], domains&lt;br&gt;pattern_count, depth&lt;br&gt;&lt;br&gt;.to_json()&lt;br&gt;.to_junit()&lt;br&gt;.format_for_llm()&lt;br&gt;.has_critical_risks()&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#74b9ff;fontColor=#2d3436;strokeColor=#0984e3;arcSize=12;shadow=1;align=left;spacingLeft=10;" vertex="1" parent="1">
-          <mxGeometry x="1150" y="115" width="190" height="130" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea14" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#0984e3;strokeWidth=2;" edge="1" source="risk-parser" target="risk-obj" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1310" y="380" />
-              <mxPoint x="1008" y="380" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="lbl-list" value="List[Risk]" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#0984e3;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="1100" y="360" width="70" height="20" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#0984e3;strokeWidth=2;" edge="1" source="risk-obj" target="result-obj" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- Output formats -->
-        <mxCell id="out-json" value="&lt;b&gt;JSON&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;fontColor=#ffffff;strokeColor=none;arcSize=30;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="120" width="80" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="out-junit" value="&lt;b&gt;JUnit XML&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;fontColor=#ffffff;strokeColor=none;arcSize=30;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="160" width="80" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="out-llm" value="&lt;b&gt;LLM fmt&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;fontColor=#ffffff;strokeColor=none;arcSize=30;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="200" width="80" height="30" as="geometry" />
-        </mxCell>
-        <mxCell id="out-rich" value="&lt;b&gt;Rich TUI&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6c5ce7;fontColor=#ffffff;strokeColor=none;arcSize=30;shadow=1;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="1400" y="240" width="80" height="30" as="geometry" />
-        </mxCell>
-
-        <mxCell id="eo1" style="rounded=1;strokeColor=#0984e3;strokeWidth=1.5;" edge="1" source="result-obj" target="out-json" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eo2" style="rounded=1;strokeColor=#0984e3;strokeWidth=1.5;" edge="1" source="result-obj" target="out-junit" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eo3" style="rounded=1;strokeColor=#0984e3;strokeWidth=1.5;" edge="1" source="result-obj" target="out-llm" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="eo4" style="rounded=1;strokeColor=#6c5ce7;strokeWidth=1.5;" edge="1" source="result-obj" target="out-rich" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-
-        <!-- =============================== -->
-        <!-- OPTIONAL VALIDATION PATH        -->
-        <!-- =============================== -->
-        <mxCell id="val-label" value="Optional: --validate" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;fontColor=#636e72;fontStyle=2;" vertex="1" parent="1">
-          <mxGeometry x="1190" y="675" width="130" height="20" as="geometry" />
-        </mxCell>
-
-        <mxCell id="val-pass" value="&lt;b&gt;Validation Pass&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;2nd LLM call filters&lt;br&gt;hallucinated risks&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#55efc4;fontColor=#2d3436;strokeColor=#00b894;strokeWidth=1;arcSize=15;shadow=1;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
-          <mxGeometry x="1190" y="698" width="180" height="65" as="geometry" />
-        </mxCell>
-
-        <mxCell id="ea-val1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#00b894;strokeWidth=2;dashed=1;" edge="1" source="raw-md" target="val-pass" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1025" y="615" />
-              <mxPoint x="1170" y="615" />
-              <mxPoint x="1170" y="730" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="ea-val2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#00b894;strokeWidth=2;dashed=1;" edge="1" source="val-pass" target="risk-parser" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="1420" y="730" />
-              <mxPoint x="1420" y="520" />
-            </Array>
-          </mxGeometry>
+        <mxCell id="frozen-note" value="&lt;font style=&quot;font-size:9px&quot; color=&quot;#636e72&quot;&gt;Each stage produces a &lt;b&gt;frozen dataclass&lt;/b&gt; (stages.py) written atomically to &lt;b&gt;.gremlin/run/&lt;/b&gt;&lt;br&gt;Pipeline: UnderstandingResult → IdeationResult → RolloutResult → JudgmentResult&lt;/font&gt;" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];strokeColor=none;fillColor=none;fontSize=9;fontColor=#636e72;" vertex="1" parent="1">
+          <mxGeometry x="250" y="270" width="500" height="30" as="geometry" />
         </mxCell>
 
         <!-- =============================== -->
         <!-- LEGEND                          -->
         <!-- =============================== -->
         <mxCell id="df-legend-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8f9fa;strokeColor=#dfe6e9;arcSize=12;" vertex="1" parent="1">
-          <mxGeometry x="100" y="870" width="500" height="85" as="geometry" />
+          <mxGeometry x="60" y="430" width="680" height="50" as="geometry" />
         </mxCell>
-        <mxCell id="df-legend-title" value="Legend" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=11;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="110" y="875" width="50" height="20" as="geometry" />
+        <mxCell id="lg1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6c5ce7;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="75" y="445" width="20" height="12" as="geometry" />
         </mxCell>
-
-        <mxCell id="lg1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6c5ce7;strokeColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="115" y="902" width="30" height="15" as="geometry" />
+        <mxCell id="lg1l" value="Input" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="98" y="440" width="40" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="lg1l" value="User / CLI" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="150" y="897" width="70" height="20" as="geometry" />
+        <mxCell id="lg2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#00b894;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="145" y="445" width="20" height="12" as="geometry" />
         </mxCell>
-
-        <mxCell id="lg2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#00b894;strokeColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="225" y="902" width="30" height="15" as="geometry" />
+        <mxCell id="lg2l" value="Understanding" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="168" y="440" width="90" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="lg2l" value="Core Engine" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="260" y="897" width="80" height="20" as="geometry" />
+        <mxCell id="lg3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdcb6e;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="265" y="445" width="20" height="12" as="geometry" />
         </mxCell>
-
-        <mxCell id="lg3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fdcb6e;strokeColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="340" y="902" width="30" height="15" as="geometry" />
+        <mxCell id="lg3l" value="Ideation" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="288" y="440" width="55" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="lg3l" value="Patterns" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="375" y="897" width="55" height="20" as="geometry" />
+        <mxCell id="lg4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e17055;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="350" y="445" width="20" height="12" as="geometry" />
         </mxCell>
-
-        <mxCell id="lg4" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e17055;strokeColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="115" y="928" width="30" height="15" as="geometry" />
+        <mxCell id="lg4l" value="Rollout" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="373" y="440" width="50" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="lg4l" value="LLM / Prompt" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="150" y="923" width="85" height="20" as="geometry" />
+        <mxCell id="lg5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;strokeColor=none;" vertex="1" parent="1">
+          <mxGeometry x="430" y="445" width="20" height="12" as="geometry" />
         </mxCell>
-
-        <mxCell id="lg5" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0984e3;strokeColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="240" y="928" width="30" height="15" as="geometry" />
+        <mxCell id="lg5l" value="Judgment" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="453" y="440" width="60" height="20" as="geometry" />
         </mxCell>
-        <mxCell id="lg5l" value="Output / Parsing" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="275" y="923" width="100" height="20" as="geometry" />
-        </mxCell>
-
-        <mxCell id="lg6" value="" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#ffeaa7;strokeColor=#d4a017;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="380" y="925" width="40" height="22" as="geometry" />
+        <mxCell id="lg6" value="" style="shape=cloud;whiteSpace=wrap;html=1;fillColor=#ffeaa7;strokeColor=#d4a017;" vertex="1" parent="1">
+          <mxGeometry x="520" y="442" width="30" height="18" as="geometry" />
         </mxCell>
         <mxCell id="lg6l" value="External API" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="425" y="923" width="80" height="20" as="geometry" />
+          <mxGeometry x="553" y="440" width="80" height="20" as="geometry" />
         </mxCell>
-
-        <!-- v0.3 artifact legend entry -->
-        <mxCell id="lg7" value="" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=8;fillColor=#d5f5e3;strokeColor=#00b894;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="620" y="875" width="35" height="20" as="geometry" />
+        <mxCell id="lg7" value="" style="endArrow=classic;html=1;strokeColor=#636e72;strokeWidth=2;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="645" y="451" as="sourcePoint" />
+            <mxPoint x="680" y="451" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="lg7l" value="Stage artifact (v0.3)" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="660" y="870" width="130" height="20" as="geometry" />
+        <mxCell id="lg7l" value="Optional" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="685" y="440" width="55" height="20" as="geometry" />
         </mxCell>
 
       </root>
