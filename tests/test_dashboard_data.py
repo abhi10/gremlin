@@ -139,30 +139,19 @@ def test_dashboard_html_reads_project_query_param():
     )
 
 
-def test_openclaw_has_landing_page_fields():
-    """Test that openclaw results have description and highlights for the landing page."""
-    data_path = Path("dashboard/data/openclaw-results.json")
-    with open(data_path) as f:
-        data = json.load(f)
-
-    assert "description" in data, "openclaw-results.json missing 'description'"
-    assert isinstance(data["description"], str) and data["description"].strip()
-
-    assert "highlights" in data, "openclaw-results.json missing 'highlights'"
-    assert isinstance(data["highlights"], list)
-    assert len(data["highlights"]) > 0, "highlights must not be empty"
-
-    required = {"title", "severity", "confidence", "area", "summary"}
-    for i, h in enumerate(data["highlights"]):
-        missing = required - set(h.keys())
-        assert not missing, f"highlight {i} missing fields: {missing}"
-
-
-def test_dashboard_html_renders_hero_section():
-    """Smoke test that dashboard HTML/JS contains hero rendering logic."""
+def test_dashboard_html_renders_landing_page():
+    """Smoke test that dashboard HTML/JS contains landing page rendering logic."""
     html_path = Path("dashboard/index.html")
     html = html_path.read_text()
-    assert "renderHero" in html, "Dashboard must have renderHero function"
-    assert "hero-description" in html, "Dashboard must have hero-description CSS class"
-    assert "hero-highlights" in html, "Dashboard must have hero-highlights CSS class"
-    assert "isDeepLinked" in html, "Dashboard must track deep-link state"
+    assert "renderLanding" in html, "Dashboard must have renderLanding function"
+    assert "landing-title" in html, "Dashboard must have landing-title CSS class"
+    assert "landing-description" in html, "Dashboard must have landing-description CSS class"
+
+
+def test_dashboard_html_syncs_url_on_change():
+    """Smoke test that dropdown change updates the browser URL."""
+    html_path = Path("dashboard/index.html")
+    html = html_path.read_text()
+    assert "history.replaceState" in html, (
+        "Dashboard must use history.replaceState to sync URL on project change"
+    )
