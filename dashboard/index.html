@@ -404,6 +404,84 @@ body {
 .empty-state h2 { color: var(--text-secondary); margin-bottom: 12px; font-size: 1.2rem; }
 .empty-state p { max-width: 400px; margin: 0 auto; }
 
+/* ── Hero / Landing Section ──────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, rgba(99,102,241,0.12) 0%, rgba(220,38,38,0.08) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+  margin-bottom: 24px;
+}
+.hero-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.hero-title a { color: var(--text-primary); text-decoration: none; }
+.hero-title a:hover { color: var(--accent); }
+.hero-description {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 20px;
+  max-width: 700px;
+}
+.hero-stats {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.hero-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.hero-stat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.hero-stat-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.hero-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.hero-highlight {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  border-left: 3px solid var(--critical);
+}
+.hero-highlight-title {
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+.hero-highlight-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.hero-highlight-summary {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.hero-cta {
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+.hero-cta:hover { color: var(--accent-hover); text-decoration: underline; }
+
 /* ── Responsive ──────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .charts-row { grid-template-columns: 1fr; }
@@ -489,6 +567,7 @@ let chartDonut = null;
 let chartDomain = null;
 let tableSort = { col: 'severity', dir: 'asc' };
 let tableFilters = { severity: '', area: '', search: '' };
+let isDeepLinked = false;
 
 // ── Domain Normalization ─────────────────────────────────────────
 function normalizeDomains(rawDomains) {
@@ -581,7 +660,10 @@ function renderDashboard() {
   const domainStats = buildDomainStats(allRisks);
 
   const main = document.getElementById('mainContent');
+  const heroHtml = (isDeepLinked && currentData.description) ? renderHero(summary) : '';
   main.innerHTML = `
+    ${heroHtml}
+
     <!-- Project Banner -->
     <div class="project-banner">
       <div class="project-name">
@@ -679,6 +761,49 @@ function renderDashboard() {
   renderDomainChart(domainStats);
   renderRiskTable();
   bindTableEvents();
+}
+
+// ── Hero / Landing Section ────────────────────────────────────────
+function renderHero(summary) {
+  const d = currentData;
+  const nameHtml = d.url && /^https?:\/\//.test(d.url)
+    ? `<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.target)}</a>`
+    : esc(d.target);
+
+  const highlightsHtml = (d.highlights || []).map(h => `
+    <div class="hero-highlight">
+      <div class="hero-highlight-title">${esc(h.title)}</div>
+      <div class="hero-highlight-meta">${esc(h.severity)} &middot; ${h.confidence}% confidence &middot; ${esc(h.area)}</div>
+      <div class="hero-highlight-summary">${esc(h.summary)}</div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="hero" id="heroSection">
+      <div class="hero-title">${nameHtml}</div>
+      <div class="hero-description">${esc(d.description)}</div>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat-value">${summary.total}</span>
+          <span class="hero-stat-label">risks found</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-value" style="color:var(--critical)">${summary.CRITICAL}</span>
+          <span class="hero-stat-label">critical</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-value" style="color:var(--high)">${summary.HIGH}</span>
+          <span class="hero-stat-label">high</span>
+        </div>
+        <div class="hero-stat">
+          <span class="hero-stat-value">${summary.areas}</span>
+          <span class="hero-stat-label">areas analyzed</span>
+        </div>
+      </div>
+      ${highlightsHtml ? `<div class="hero-highlights">${highlightsHtml}</div>` : ''}
+      <a class="hero-cta" onclick="document.querySelector('.charts-row').scrollIntoView({behavior:'smooth'})">View full dashboard &#8595;</a>
+    </div>
+  `;
 }
 
 // ── Heatmap Render ───────────────────────────────────────────────
@@ -942,13 +1067,31 @@ async function loadFromCatalog() {
     select.innerHTML = catalog.projects.map(p =>
       `<option value="${esc(p.file)}">${esc(p.name)}</option>`
     ).join('');
-    select.addEventListener('change', () => loadProject(select.value));
+    select.addEventListener('change', () => {
+      isDeepLinked = false;
+      loadProject(select.value);
+    });
 
-    // Check URL param
+    // Check URL params: ?project=<id> or ?file=<filename>
     const params = new URLSearchParams(window.location.search);
+    const projectParam = params.get('project');
     const fileParam = params.get('file');
-    if (fileParam) {
-      await loadProject(fileParam);
+    let targetFile = null;
+
+    if (projectParam) {
+      const match = catalog.projects.find(p => p.id === projectParam);
+      if (match) {
+        targetFile = match.file;
+        isDeepLinked = true;
+      }
+    } else if (fileParam) {
+      targetFile = fileParam;
+    }
+
+    if (targetFile) {
+      // Sync the dropdown to the deep-linked project
+      select.value = targetFile;
+      await loadProject(targetFile);
     } else if (catalog.projects.length) {
       await loadProject(catalog.projects[0].file);
     }

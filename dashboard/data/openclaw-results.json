@@ -1,6 +1,30 @@
 {
   "target": "openclaw/openclaw",
   "url": "https://github.com/openclaw/openclaw",
+  "description": "Open-source personal AI assistant with WebSocket gateways, multi-channel messaging, voice processing, and device pairing.",
+  "highlights": [
+    {
+      "title": "WebSocket Frame Bomb Attack",
+      "severity": "CRITICAL",
+      "confidence": 95,
+      "area": "WebSocket Gateway",
+      "summary": "Malicious client sends crafted frames with claimed 2GB payload, exhausting memory instantly and crashing all channels."
+    },
+    {
+      "title": "Webhook Signature Replay Attack",
+      "severity": "CRITICAL",
+      "confidence": 95,
+      "area": "Multi-Channel Messaging",
+      "summary": "Captured webhook signatures replayed within validity window to inject forged messages across platforms."
+    },
+    {
+      "title": "Workspace Directory Takeover",
+      "severity": "CRITICAL",
+      "confidence": 95,
+      "area": "Session Persistence & State",
+      "summary": "Symlink attack on workspace directory allows arbitrary file read/write through the AI assistant runtime."
+    }
+  ],
   "date": "2026-02-15T22:30:00.000000",
   "gremlin_version": "0.2.0",
   "threshold": 70,

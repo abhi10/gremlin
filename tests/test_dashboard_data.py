@@ -99,3 +99,70 @@ def test_no_duplicate_filenames():
 
     files = [p["file"] for p in catalog["projects"]]
     assert len(files) == len(set(files)), f"Duplicate filenames: {files}"
+
+
+# ── URL query param & landing page tests ─────────────────────────
+
+
+def test_catalog_projects_have_id_for_url_param():
+    """Test that every catalog project has an 'id' field for ?project= deep linking."""
+    catalog_path = Path("dashboard/data/catalog.json")
+    with open(catalog_path) as f:
+        catalog = json.load(f)
+
+    for project in catalog["projects"]:
+        assert "id" in project, f"Project missing 'id': {project}"
+        assert isinstance(project["id"], str) and project["id"].strip(), (
+            f"Project 'id' must be a non-empty string: {project}"
+        )
+
+
+def test_project_param_resolves_to_valid_file():
+    """Test that each catalog project id maps to an existing data file."""
+    catalog_path = Path("dashboard/data/catalog.json")
+    with open(catalog_path) as f:
+        catalog = json.load(f)
+
+    for project in catalog["projects"]:
+        file_path = Path("dashboard/data") / project["file"]
+        assert file_path.exists(), (
+            f"?project={project['id']} would resolve to {project['file']} but file is missing"
+        )
+
+
+def test_dashboard_html_reads_project_query_param():
+    """Smoke test that dashboard JS contains ?project= param handling."""
+    html_path = Path("dashboard/index.html")
+    html = html_path.read_text()
+    assert "params.get('project')" in html, (
+        "Dashboard JS must read the 'project' query parameter"
+    )
+
+
+def test_openclaw_has_landing_page_fields():
+    """Test that openclaw results have description and highlights for the landing page."""
+    data_path = Path("dashboard/data/openclaw-results.json")
+    with open(data_path) as f:
+        data = json.load(f)
+
+    assert "description" in data, "openclaw-results.json missing 'description'"
+    assert isinstance(data["description"], str) and data["description"].strip()
+
+    assert "highlights" in data, "openclaw-results.json missing 'highlights'"
+    assert isinstance(data["highlights"], list)
+    assert len(data["highlights"]) > 0, "highlights must not be empty"
+
+    required = {"title", "severity", "confidence", "area", "summary"}
+    for i, h in enumerate(data["highlights"]):
+        missing = required - set(h.keys())
+        assert not missing, f"highlight {i} missing fields: {missing}"
+
+
+def test_dashboard_html_renders_hero_section():
+    """Smoke test that dashboard HTML/JS contains hero rendering logic."""
+    html_path = Path("dashboard/index.html")
+    html = html_path.read_text()
+    assert "renderHero" in html, "Dashboard must have renderHero function"
+    assert "hero-description" in html, "Dashboard must have hero-description CSS class"
+    assert "hero-highlights" in html, "Dashboard must have hero-highlights CSS class"
+    assert "isDeepLinked" in html, "Dashboard must track deep-link state"
