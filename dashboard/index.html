@@ -1074,7 +1074,8 @@ async function loadFromCatalog() {
         targetFile = match.file;
       }
     } else if (fileParam) {
-      targetFile = fileParam;
+      const fileMatch = catalog.projects.find(p => p.file === fileParam);
+      if (fileMatch) targetFile = fileParam;
     }
 
     if (targetFile) {
