@@ -493,7 +493,7 @@ body {
 <!-- Header -->
 <header class="header">
   <div>
-    <div class="header-logo">Gremlin <span>Risk Dashboard</span> <small style="opacity:0.5;font-size:0.6em;font-weight:400;">v2.0</small></div>
+    <a class="header-logo" href="./" style="text-decoration:none">Gremlin <span>Risk Dashboard</span> <small style="opacity:0.5;font-size:0.6em;font-weight:400;">v2.0</small></a>
     <div class="header-description">
       AI-powered risk analysis with 107 QA patterns — visualize critical scenarios across security, concurrency, payments, and more.
     </div>
@@ -1039,6 +1039,14 @@ async function loadFromCatalog() {
       catalog.projects.map(p =>
         `<option value="${esc(p.file)}" data-id="${esc(p.id)}">${esc(p.name)}</option>`
       ).join('');
+    // Logo click → landing page
+    document.querySelector('.header-logo').addEventListener('click', (e) => {
+      e.preventDefault();
+      select.value = '';
+      history.replaceState(null, '', window.location.pathname);
+      renderLanding(catalog);
+    });
+
     select.addEventListener('change', () => {
       const opt = select.selectedOptions[0];
       const id = opt ? opt.dataset.id : '';
@@ -1064,7 +1072,6 @@ async function loadFromCatalog() {
       const match = catalog.projects.find(p => p.id === projectParam);
       if (match) {
         targetFile = match.file;
-        isDeepLinked = true;
       }
     } else if (fileParam) {
       targetFile = fileParam;
